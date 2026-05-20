@@ -55,7 +55,9 @@
     "serve": "pnpm run build && node dist/cli.js serve --providers openai",
     "test": "vitest run",
     "check": "pnpm run build && pnpm run test",
-    "package:check": "node scripts/package-check.mjs --skip-version-check"
+    "package:check": "node scripts/package-check.mjs --skip-version-check",
+    "version:update": "node scripts/update-version.mjs",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",
