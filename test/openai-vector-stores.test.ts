@@ -36,7 +36,7 @@ describe("OpenAI Vector Stores mock", () => {
     }
   });
 
-  it("creates, lists, updates, searches, and deletes vector stores", async () => {
+  it("creates, lists, updates, searches, attaches files, and deletes vector stores", async () => {
     const createPayload = {
       name: "Docs",
       file_ids: ["file-1", "file-2"],
@@ -82,6 +82,50 @@ describe("OpenAI Vector Stores mock", () => {
       has_more: false
     });
 
+    const attachFileResponse = await jsonRequest("POST", `/v1/vector_stores/${created.id}/files`, {
+      file_id: "file-abc123",
+      attributes: { section: "launch" }
+    });
+    expect(attachFileResponse.status).toBe(200);
+    await expect(attachFileResponse.json()).resolves.toMatchObject({
+      id: "file-abc123",
+      object: "vector_store.file",
+      vector_store_id: created.id,
+      status: "completed",
+      last_error: null,
+      attributes: { section: "launch" }
+    });
+
+    const listFilesResponse = await jsonRequest("GET", `/openai/v1/vector_stores/${created.id}/files`);
+    expect(listFilesResponse.status).toBe(200);
+    await expect(listFilesResponse.json()).resolves.toMatchObject({
+      object: "list",
+      data: [
+        {
+          id: "file-abc123",
+          object: "vector_store.file"
+        }
+      ],
+      has_more: false
+    });
+
+    const updateFileResponse = await jsonRequest("POST", `/v1/vector_stores/${created.id}/files/file-abc123`, {
+      attributes: { section: "updated" }
+    });
+    expect(updateFileResponse.status).toBe(200);
+    await expect(updateFileResponse.json()).resolves.toMatchObject({
+      id: "file-abc123",
+      attributes: { section: "updated" }
+    });
+
+    const deleteFileResponse = await jsonRequest("DELETE", `/v1/vector_stores/${created.id}/files/file-abc123`);
+    expect(deleteFileResponse.status).toBe(200);
+    await expect(deleteFileResponse.json()).resolves.toEqual({
+      id: "file-abc123",
+      object: "vector_store.file.deleted",
+      deleted: true
+    });
+
     const deleteResponse = await jsonRequest("DELETE", `/v1/vector_stores/${created.id}`);
     expect(deleteResponse.status).toBe(200);
     await expect(deleteResponse.json()).resolves.toEqual({
@@ -94,7 +138,7 @@ describe("OpenAI Vector Stores mock", () => {
     expect(retrieveAfterDelete.status).toBe(404);
 
     const journal = await readJournal(requestLogPath);
-    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(6);
+    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(10);
     expect(journal.find((entry) => entry.path === "/v1/vector_stores")).toMatchObject({
       providerId: "openai",
       apiSurface: "vector_stores",

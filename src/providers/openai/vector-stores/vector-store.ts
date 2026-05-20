@@ -21,16 +21,34 @@ export type OpenAiVectorStore = {
   expires_at: number | null;
 };
 
+export type OpenAiVectorStoreFile = {
+  id: string;
+  object: "vector_store.file";
+  usage_bytes: number;
+  created_at: number;
+  vector_store_id: string;
+  status: "completed";
+  last_error: null;
+  chunking_strategy: JsonRecord;
+  attributes: JsonRecord;
+};
+
 export type OpenAiVectorStoreStore = {
   create(requestBody: JsonRecord): OpenAiVectorStore;
   update(id: string, requestBody: JsonRecord): OpenAiVectorStore | null;
   retrieve(id: string): OpenAiVectorStore | null;
   delete(id: string): boolean;
   list(): OpenAiVectorStore[];
+  attachFile(vectorStoreId: string, requestBody: JsonRecord): OpenAiVectorStoreFile | null;
+  updateFile(vectorStoreId: string, fileId: string, requestBody: JsonRecord): OpenAiVectorStoreFile | null;
+  retrieveFile(vectorStoreId: string, fileId: string): OpenAiVectorStoreFile | null;
+  deleteFile(vectorStoreId: string, fileId: string): boolean | null;
+  listFiles(vectorStoreId: string): OpenAiVectorStoreFile[] | null;
 };
 
 export function createOpenAiVectorStoreStore(): OpenAiVectorStoreStore {
   const stores = new Map<string, OpenAiVectorStore>();
+  const filesByStore = new Map<string, Map<string, OpenAiVectorStoreFile>>();
   return {
     create(requestBody) {
       const created = createVectorStore(requestBody);
@@ -54,10 +72,56 @@ export function createOpenAiVectorStoreStore(): OpenAiVectorStoreStore {
       return stores.get(id) ?? null;
     },
     delete(id) {
+      filesByStore.delete(id);
       return stores.delete(id);
     },
     list() {
       return [...stores.values()].sort((left, right) => right.created_at - left.created_at);
+    },
+    attachFile(vectorStoreId, requestBody) {
+      const store = stores.get(vectorStoreId);
+      if (!store) {
+        return null;
+      }
+      const fileId = readString(requestBody, "file_id");
+      if (!fileId) {
+        throw new Error("file_id must be a non-empty string");
+      }
+      const file = createVectorStoreFile(vectorStoreId, requestBody, fileId);
+      readFileMap(filesByStore, vectorStoreId).set(fileId, file);
+      refreshFileCounts(store, filesByStore.get(vectorStoreId)?.size ?? 0);
+      return file;
+    },
+    updateFile(vectorStoreId, fileId, requestBody) {
+      const file = filesByStore.get(vectorStoreId)?.get(fileId);
+      if (!file) {
+        return null;
+      }
+      const updated = {
+        ...file,
+        ...(requestBody.attributes !== undefined ? { attributes: readMetadata(requestBody.attributes) } : {})
+      };
+      filesByStore.get(vectorStoreId)?.set(fileId, updated);
+      return updated;
+    },
+    retrieveFile(vectorStoreId, fileId) {
+      return filesByStore.get(vectorStoreId)?.get(fileId) ?? null;
+    },
+    deleteFile(vectorStoreId, fileId) {
+      const store = stores.get(vectorStoreId);
+      if (!store) {
+        return null;
+      }
+      const deleted = filesByStore.get(vectorStoreId)?.delete(fileId) ?? false;
+      refreshFileCounts(store, filesByStore.get(vectorStoreId)?.size ?? 0);
+      return deleted;
+    },
+    listFiles(vectorStoreId) {
+      if (!stores.has(vectorStoreId)) {
+        return null;
+      }
+      return [...(filesByStore.get(vectorStoreId)?.values() ?? [])]
+        .sort((left, right) => right.created_at - left.created_at);
     }
   };
 }
@@ -85,6 +149,42 @@ function createVectorStore(requestBody: JsonRecord): OpenAiVectorStore {
     metadata: readMetadata(requestBody.metadata),
     expires_after: readNullableRecord(requestBody.expires_after),
     expires_at: null
+  };
+}
+
+function createVectorStoreFile(vectorStoreId: string, requestBody: JsonRecord, fileId: string): OpenAiVectorStoreFile {
+  return {
+    id: fileId,
+    object: "vector_store.file",
+    usage_bytes: 0,
+    created_at: Math.floor(Date.now() / 1000),
+    vector_store_id: vectorStoreId,
+    status: "completed",
+    last_error: null,
+    chunking_strategy: isRecord(requestBody.chunking_strategy) ? requestBody.chunking_strategy : { type: "auto" },
+    attributes: readMetadata(requestBody.attributes)
+  };
+}
+
+function readFileMap(
+  filesByStore: Map<string, Map<string, OpenAiVectorStoreFile>>,
+  vectorStoreId: string
+): Map<string, OpenAiVectorStoreFile> {
+  let files = filesByStore.get(vectorStoreId);
+  if (!files) {
+    files = new Map();
+    filesByStore.set(vectorStoreId, files);
+  }
+  return files;
+}
+
+function refreshFileCounts(store: OpenAiVectorStore, completed: number): void {
+  store.file_counts = {
+    in_progress: 0,
+    completed,
+    cancelled: 0,
+    failed: 0,
+    total: completed
   };
 }
 

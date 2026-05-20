@@ -50,6 +50,18 @@ export async function routeOpenAiVectorStores(params: {
       return writeSuccess(params, created, bodyText, requestBody);
     }
 
+    const fileMatch = /^vector_stores\/([^/]+)\/files(?:\/([^/]+)(?:\/content)?)?$/.exec(suffix);
+    if (fileMatch) {
+      const vectorStoreId = decodeURIComponent(fileMatch[1] ?? "");
+      const fileId = fileMatch[2] ? decodeURIComponent(fileMatch[2]) : null;
+      return await routeVectorStoreFiles({
+        ...params,
+        vectorStoreId,
+        fileId,
+        bodyText
+      });
+    }
+
     const match = /^vector_stores\/([^/]+)(?:\/(search))?$/.exec(suffix);
     if (!match) {
       throw notFoundError("vector store route not found");
@@ -121,6 +133,82 @@ export async function routeOpenAiVectorStores(params: {
       errorClass
     };
   }
+}
+
+async function routeVectorStoreFiles(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  requestId: string;
+  receivedAtEpochMs: number;
+  vectorStores: OpenAiVectorStoreStore;
+  vectorStoreId: string;
+  fileId: string | null;
+  bodyText: string;
+}): Promise<OpenAiVectorStoresRouteResult> {
+  let bodyText = params.bodyText;
+
+  if (params.req.method === "GET" && !params.fileId) {
+    const files = params.vectorStores.listFiles(params.vectorStoreId);
+    if (!files) {
+      throw notFoundError(`No vector store found with id '${params.vectorStoreId}'`);
+    }
+    return writeSuccess(params, {
+      object: "list",
+      data: files,
+      first_id: files[0]?.id ?? null,
+      last_id: files.at(-1)?.id ?? null,
+      has_more: false
+    }, bodyText);
+  }
+
+  if (params.req.method === "POST" && !params.fileId) {
+    bodyText = await readRequestBody(params.req);
+    const requestBody = parseJsonObject(bodyText);
+    const file = params.vectorStores.attachFile(params.vectorStoreId, requestBody);
+    if (!file) {
+      throw notFoundError(`No vector store found with id '${params.vectorStoreId}'`);
+    }
+    return writeSuccess(params, file, bodyText, requestBody);
+  }
+
+  if (!params.fileId) {
+    throw notFoundError("vector store file route not found");
+  }
+
+  if (params.req.method === "GET") {
+    const file = params.vectorStores.retrieveFile(params.vectorStoreId, params.fileId);
+    if (!file) {
+      throw notFoundError(`No vector store file found with id '${params.fileId}'`);
+    }
+    return writeSuccess(params, file, bodyText);
+  }
+
+  if (params.req.method === "POST") {
+    bodyText = await readRequestBody(params.req);
+    const requestBody = parseJsonObject(bodyText);
+    const file = params.vectorStores.updateFile(params.vectorStoreId, params.fileId, requestBody);
+    if (!file) {
+      throw notFoundError(`No vector store file found with id '${params.fileId}'`);
+    }
+    return writeSuccess(params, file, bodyText, requestBody);
+  }
+
+  if (params.req.method === "DELETE") {
+    const deleted = params.vectorStores.deleteFile(params.vectorStoreId, params.fileId);
+    if (deleted === null) {
+      throw notFoundError(`No vector store found with id '${params.vectorStoreId}'`);
+    }
+    if (!deleted) {
+      throw notFoundError(`No vector store file found with id '${params.fileId}'`);
+    }
+    return writeSuccess(params, {
+      id: params.fileId,
+      object: "vector_store.file.deleted",
+      deleted: true
+    }, bodyText);
+  }
+
+  throw notFoundError("vector store file route not found");
 }
 
 function writeSuccess(
