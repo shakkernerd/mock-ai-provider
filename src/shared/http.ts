@@ -19,6 +19,23 @@ export async function readRequestBody(
   return Buffer.concat(chunks).toString("utf8");
 }
 
+export async function readRequestBuffer(
+  req: IncomingMessage,
+  maxBytes = DEFAULT_MAX_BODY_BYTES
+): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maxBytes) {
+      throw Object.assign(new Error("request body too large"), { statusCode: 413 });
+    }
+    chunks.push(buffer);
+  }
+  return Buffer.concat(chunks);
+}
+
 export function writeJson(
   res: ServerResponse,
   statusCode: number,
@@ -59,6 +76,22 @@ export function writeBinary(
     ...headers
   });
   res.end(body);
+}
+
+export function writeText(
+  res: ServerResponse,
+  statusCode: number,
+  body: string,
+  headers: Record<string, string> = {}
+): void {
+  const payload = Buffer.from(body, "utf8");
+  res.writeHead(statusCode, {
+    ...corsHeaders(),
+    "content-type": "text/plain; charset=utf-8",
+    "content-length": String(payload.length),
+    ...headers
+  });
+  res.end(payload);
 }
 
 export function corsHeaders(): Record<string, string> {

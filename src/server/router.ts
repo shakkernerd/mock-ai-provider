@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "../providers/openai/auth.js";
-import { handleOpenAiSpeech } from "../providers/openai/handle-audio.js";
+import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "../providers/openai/handle-audio.js";
 import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js";
 import { handleOpenAiImageGeneration } from "../providers/openai/handle-images.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
@@ -189,6 +189,37 @@ export async function routeRequest(
     return;
   }
 
+  if (req.method === "POST" && isOpenAiAudioTextPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
+    const kind = path.endsWith("/translations") ? "translation" : "transcription";
+    const result = await handleOpenAiAudioTranscription({
+      req,
+      res,
+      requestId,
+      receivedAtEpochMs: received.epochMs,
+      kind
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: `audio.${kind}s`,
+      model: result.model,
+      stream: false,
+      status: result.status,
+      matchedScriptStep: null,
+      responseType: kind,
+      toolCallsEmitted: 0,
+      finalTextEmitted: null,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {}),
+      ...(result.responseSummary ? { responseSummary: result.responseSummary } : {})
+    });
+    return;
+  }
+
   if (req.method === "POST" && isOpenAiResponsesPath(path, options.providers)) {
     if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
       return;
@@ -294,6 +325,15 @@ function isOpenAiSpeechPath(path: string, providers: readonly string[]): boolean
     return providers.includes("openai");
   }
   return path === "/v1/audio/speech" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiAudioTextPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/audio/transcriptions" || path === "/openai/v1/audio/translations") {
+    return providers.includes("openai");
+  }
+  return (path === "/v1/audio/transcriptions" || path === "/v1/audio/translations")
+    && providers.length === 1
+    && providers[0] === "openai";
 }
 
 function isOpenAiResponsesPath(path: string, providers: readonly string[]): boolean {
