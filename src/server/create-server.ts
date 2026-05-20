@@ -8,6 +8,7 @@ import {
   loadOpenAiModelCatalog,
   type OpenAiModel
 } from "../providers/openai/model-catalog.js";
+import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/video-store.js";
 import type { MockScript } from "../scripts/types.js";
 
 export type CreateServerOptions = {
@@ -18,6 +19,7 @@ export type CreateServerOptions = {
   openAiAuth?: OpenAiAuthOptions;
   openAiModels?: readonly OpenAiModel[];
   openAiModelsPath?: string;
+  openAiVideos?: OpenAiVideoStore;
 };
 
 export async function createMockAiProviderServer(options: CreateServerOptions): Promise<Server> {
@@ -27,6 +29,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
     ?? (options.openAiModelsPath ? await loadOpenAiModelCatalog(options.openAiModelsPath) : DEFAULT_OPENAI_MODEL_CATALOG);
   const runtime = createScriptRuntime(script);
   const journal = createRequestJournal(options.requestLogPath);
+  const openAiVideos = options.openAiVideos ?? createOpenAiVideoStore();
 
   return createServer((req, res) => {
     routeRequest(req, res, {
@@ -34,7 +37,8 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
       runtime,
       journal,
       openAiAuth: options.openAiAuth ?? { strict: false },
-      openAiModels
+      openAiModels,
+      openAiVideos
     }).catch((error: unknown) => {
       if (!res.headersSent) {
         res.writeHead(500, { "content-type": "application/json; charset=utf-8" });

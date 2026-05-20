@@ -23,3 +23,7 @@ export function createResponseItemId(): string {
 export function createEventId(): string {
   return `event_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createVideoId(): string {
+  return `video_${randomUUID().replaceAll("-", "")}`;
+}

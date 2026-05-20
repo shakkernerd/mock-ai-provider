@@ -5,8 +5,15 @@ import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js
 import { handleOpenAiImageGeneration } from "../providers/openai/handle-images.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiResponses } from "../providers/openai/handle-responses.js";
+import {
+  handleOpenAiCreateVideo,
+  handleOpenAiListVideos,
+  handleOpenAiRetrieveVideo,
+  handleOpenAiVideoContent
+} from "../providers/openai/handle-videos.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
 import type { OpenAiModel } from "../providers/openai/model-catalog.js";
+import type { OpenAiVideoStore } from "../providers/openai/video-store.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, requestPath, writeJson, writeNoContent } from "../shared/http.js";
 import { durationMs, nowTimestamp } from "../shared/time.js";
@@ -19,6 +26,7 @@ export type RouterOptions = {
   journal: RequestJournal;
   openAiAuth: OpenAiAuthOptions;
   openAiModels: readonly OpenAiModel[];
+  openAiVideos: OpenAiVideoStore;
 };
 
 export async function routeRequest(
@@ -251,6 +259,37 @@ export async function routeRequest(
     return;
   }
 
+  if (isOpenAiVideosPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
+    const result = await handleOpenAiVideoRoute({
+      req,
+      res,
+      path,
+      requestId,
+      receivedAtEpochMs: received.epochMs,
+      videos: options.openAiVideos
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: "videos",
+      model: result.model,
+      stream: false,
+      status: result.status,
+      matchedScriptStep: null,
+      responseType: "video",
+      toolCallsEmitted: 0,
+      finalTextEmitted: null,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {}),
+      ...(result.responseSummary ? { responseSummary: result.responseSummary } : {})
+    });
+    return;
+  }
+
   if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
     if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
       return;
@@ -343,6 +382,40 @@ function isOpenAiResponsesPath(path: string, providers: readonly string[]): bool
   return path === "/v1/responses" && providers.length === 1 && providers[0] === "openai";
 }
 
+function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/videos" || path.startsWith("/openai/v1/videos/")) {
+    return providers.includes("openai");
+  }
+  if (path === "/v1/videos" || path.startsWith("/v1/videos/")) {
+    return providers.length === 1 && providers[0] === "openai";
+  }
+  return false;
+}
+
+async function handleOpenAiVideoRoute(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  videos: OpenAiVideoStore;
+}) {
+  if (params.req.method === "POST" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
+    return handleOpenAiCreateVideo(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
+    return handleOpenAiListVideos(params);
+  }
+  const videoId = readOpenAiVideoId(params.path);
+  if (params.req.method === "GET" && videoId && params.path.endsWith("/content")) {
+    return handleOpenAiVideoContent({ ...params, videoId });
+  }
+  if (params.req.method === "GET" && videoId) {
+    return handleOpenAiRetrieveVideo({ ...params, videoId });
+  }
+  return handleOpenAiRetrieveVideo({ ...params, videoId: "" });
+}
+
 function readOpenAiModelId(path: string): string | undefined {
   const prefix = path.startsWith("/openai/") ? "/openai/v1/models/" : "/v1/models/";
   if (!path.startsWith(prefix)) {
@@ -350,6 +423,15 @@ function readOpenAiModelId(path: string): string | undefined {
   }
   const modelId = path.slice(prefix.length);
   return modelId.length > 0 ? decodeURIComponent(modelId) : undefined;
+}
+
+function readOpenAiVideoId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/videos/" : "/v1/videos/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/content$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }
 
 function authorizeOpenAiRequest(params: {
