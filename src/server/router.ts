@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { enforceOpenAiAuth, type OpenAiAuthOptions } from "../providers/openai/auth.js";
 import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
@@ -12,6 +13,7 @@ export type RouterOptions = {
   providers: readonly string[];
   runtime: ScriptRuntime;
   journal: RequestJournal;
+  openAiAuth: OpenAiAuthOptions;
 };
 
 export async function routeRequest(
@@ -58,6 +60,9 @@ export async function routeRequest(
   }
 
   if (req.method === "POST" && isOpenAiChatCompletionsPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
     const result = await handleOpenAiChatCompletions({
       req,
       res,
@@ -84,6 +89,9 @@ export async function routeRequest(
   }
 
   if (req.method === "POST" && isOpenAiEmbeddingsPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
     const result = await handleOpenAiEmbeddings({
       req,
       res,
@@ -109,6 +117,9 @@ export async function routeRequest(
   }
 
   if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
     const modelId = readOpenAiModelId(path);
     const result = handleOpenAiModels({
       res,
@@ -172,6 +183,40 @@ function readOpenAiModelId(path: string): string | undefined {
   }
   const modelId = path.slice(prefix.length);
   return modelId.length > 0 ? decodeURIComponent(modelId) : undefined;
+}
+
+function authorizeOpenAiRequest(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  requestId: string;
+  receivedAtEpochMs: number;
+  options: RouterOptions;
+  appendJournal: (partial: Omit<RequestJournalEntry, "schemaVersion" | "requestId" | "clientRequestId" | "method" | "path" | "receivedAt" | "receivedAtEpochMs" | "respondedAt" | "respondedAtEpochMs" | "durationMs">) => void;
+}): boolean {
+  const result = enforceOpenAiAuth({
+    req: params.req,
+    res: params.res,
+    requestId: params.requestId,
+    receivedAtEpochMs: params.receivedAtEpochMs,
+    auth: params.options.openAiAuth
+  });
+  if (result.ok) {
+    return true;
+  }
+  params.appendJournal({
+    providerId: "openai",
+    apiSurface: null,
+    model: null,
+    stream: null,
+    status: result.status ?? 401,
+    matchedScriptStep: null,
+    responseType: null,
+    toolCallsEmitted: 0,
+    finalTextEmitted: null,
+    errorClass: result.errorClass ?? "invalid_request_error",
+    bodyBytes: 0
+  });
+  return false;
 }
 
 function emptyJournalFields(params: { status: number; errorClass?: string | null }) {

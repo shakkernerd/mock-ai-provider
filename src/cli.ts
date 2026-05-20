@@ -17,6 +17,8 @@ async function main(argv: string[]): Promise<void> {
       script: { type: "string" },
       port: { type: "string", default: "31337" },
       "request-log": { type: "string" },
+      "strict-auth": { type: "boolean" },
+      "api-key": { type: "string" },
       help: { type: "boolean", short: "h" }
     },
     allowPositionals: false
@@ -31,10 +33,15 @@ async function main(argv: string[]): Promise<void> {
   const scriptPath = optionalString(values.script);
   const requestLogPath = optionalString(values["request-log"]) ?? ".mock-ai-provider/requests.jsonl";
   const port = parsePort(requiredString(values.port, "--port"));
+  const apiKey = optionalString(values["api-key"]);
   const server = await createMockAiProviderServer({
     providers,
     ...(scriptPath ? { scriptPath } : {}),
-    requestLogPath
+    requestLogPath,
+    openAiAuth: {
+      strict: values["strict-auth"] === true,
+      ...(apiKey ? { apiKey } : {})
+    }
   });
 
   await new Promise<void>((resolve) => {
@@ -58,7 +65,11 @@ async function main(argv: string[]): Promise<void> {
           source: "default",
           description: "built-in default final text"
         },
-    requestLog: requestLogPath
+    requestLog: requestLogPath,
+    auth: {
+      strict: values["strict-auth"] === true,
+      apiKeyConfigured: Boolean(apiKey)
+    }
   })}\n`);
 }
 
@@ -84,7 +95,7 @@ function parsePort(value: string): number {
 function printUsage(): void {
   process.stdout.write([
     "Usage:",
-    "  mock-ai-provider serve --providers openai [--script <path>] [--port <number|0>] [--request-log <path>]",
+    "  mock-ai-provider serve --providers openai [--script <path>] [--port <number|0>] [--request-log <path>] [--strict-auth] [--api-key <key>]",
     ""
   ].join("\n"));
 }

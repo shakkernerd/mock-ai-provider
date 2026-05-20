@@ -2,6 +2,7 @@ import { createServer, type Server } from "node:http";
 import { createRequestJournal } from "./request-journal.js";
 import { createScriptRuntime, DEFAULT_SCRIPT, loadScript } from "./script-loader.js";
 import { routeRequest } from "./router.js";
+import type { OpenAiAuthOptions } from "../providers/openai/auth.js";
 import type { MockScript } from "../scripts/types.js";
 
 export type CreateServerOptions = {
@@ -9,6 +10,7 @@ export type CreateServerOptions = {
   scriptPath?: string;
   script?: MockScript;
   requestLogPath: string;
+  openAiAuth?: OpenAiAuthOptions;
 };
 
 export async function createMockAiProviderServer(options: CreateServerOptions): Promise<Server> {
@@ -21,7 +23,8 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
     routeRequest(req, res, {
       providers,
       runtime,
-      journal
+      journal,
+      openAiAuth: options.openAiAuth ?? { strict: false }
     }).catch((error: unknown) => {
       if (!res.headersSent) {
         res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
