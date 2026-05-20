@@ -1,5 +1,5 @@
 import { isRecord, readString } from "../shared/json.js";
-import type { FunctionToolCall, MockScript, ScriptStep } from "./types.js";
+import type { FunctionToolCall, MockScript, ScriptStep, ScriptStepMatch } from "./types.js";
 
 export function validateScript(value: unknown): MockScript {
   if (!isRecord(value)) {
@@ -26,13 +26,18 @@ function validateStep(value: unknown, index: number): ScriptStep {
   }
   const type = readString(respond, "type");
   const id = readString(value, "id");
+  const match = validateMatch(value.match, index);
+  const base = {
+    ...(id ? { id } : {}),
+    ...(match ? { match } : {})
+  };
   if (type === "final-text") {
     const text = readString(respond, "text");
     if (text === undefined) {
       throw new Error(`script.steps[${index}].respond.text must be a string`);
     }
     return {
-      ...(id ? { id } : {}),
+      ...base,
       respond: {
         type,
         text
@@ -41,7 +46,7 @@ function validateStep(value: unknown, index: number): ScriptStep {
   }
   if (type === "tool-calls") {
     return {
-      ...(id ? { id } : {}),
+      ...base,
       respond: {
         type,
         toolCalls: validateToolCalls(respond.toolCalls, index)
@@ -49,6 +54,43 @@ function validateStep(value: unknown, index: number): ScriptStep {
     };
   }
   throw new Error(`script.steps[${index}].respond.type must be "final-text" or "tool-calls"`);
+}
+
+function validateMatch(value: unknown, stepIndex: number): ScriptStepMatch | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new Error(`script.steps[${stepIndex}].match must be an object`);
+  }
+  const requestIndex = value.requestIndex;
+  if (requestIndex !== undefined && (typeof requestIndex !== "number" || !Number.isInteger(requestIndex) || requestIndex < 0)) {
+    throw new Error(`script.steps[${stepIndex}].match.requestIndex must be a non-negative integer`);
+  }
+  const body = value.body;
+  if (body !== undefined && !isRecord(body)) {
+    throw new Error(`script.steps[${stepIndex}].match.body must be an object`);
+  }
+  return {
+    ...(typeof requestIndex === "number" ? { requestIndex } : {}),
+    ...readOptionalMatchString(value, "apiSurface"),
+    ...readOptionalMatchString(value, "model"),
+    ...(body ? { body } : {}),
+    ...(typeof value.hasToolResult === "boolean" ? { hasToolResult: value.hasToolResult } : {}),
+    ...readOptionalMatchString(value, "toolResultName"),
+    ...readOptionalMatchString(value, "priorToolCallName")
+  };
+}
+
+function readOptionalMatchString(value: Record<string, unknown>, key: string): Record<string, string> {
+  const raw = value[key];
+  if (raw === undefined) {
+    return {};
+  }
+  if (typeof raw !== "string" || raw.length === 0) {
+    throw new Error(`match.${key} must be a non-empty string`);
+  }
+  return { [key]: raw };
 }
 
 function validateToolCalls(value: unknown, stepIndex: number): FunctionToolCall[] {

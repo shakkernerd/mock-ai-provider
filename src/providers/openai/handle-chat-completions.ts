@@ -4,7 +4,7 @@ import { openAiResponseHeaders } from "./headers.js";
 import { writeChatCompletionStream } from "./render-chat-completion-stream.js";
 import { renderChatCompletion } from "./render-chat-completions.js";
 import { readRequestBody, writeJson } from "../../shared/http.js";
-import { parseJsonObject } from "../../shared/json.js";
+import { parseJsonObject, readString } from "../../shared/json.js";
 import type { ScriptRuntime } from "../../scripts/types.js";
 
 export type OpenAiRouteResult = {
@@ -34,7 +34,11 @@ export async function handleOpenAiChatCompletions(params: {
   try {
     bodyText = await readRequestBody(params.req);
     const requestBody = parseJsonObject(bodyText);
-    const step = params.runtime.nextStep();
+    const step = params.runtime.nextStep({
+      apiSurface: "chat.completions",
+      model: readString(requestBody, "model") ?? null,
+      requestBody
+    });
     const headers = openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs

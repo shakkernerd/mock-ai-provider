@@ -3,7 +3,7 @@ import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { renderResponse, renderResponseStreamEvents } from "./render-responses.js";
 import { corsHeaders, readRequestBody, writeJson } from "../../shared/http.js";
-import { parseJsonObject } from "../../shared/json.js";
+import { parseJsonObject, readString } from "../../shared/json.js";
 import { writeSseDone, writeSseJson } from "../../shared/sse.js";
 import type { ScriptRuntime } from "../../scripts/types.js";
 
@@ -34,7 +34,11 @@ export async function handleOpenAiResponses(params: {
   try {
     bodyText = await readRequestBody(params.req);
     const requestBody = parseJsonObject(bodyText);
-    const step = params.runtime.nextStep();
+    const step = params.runtime.nextStep({
+      apiSurface: "responses",
+      model: readString(requestBody, "model") ?? null,
+      requestBody
+    });
     const headers = openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs

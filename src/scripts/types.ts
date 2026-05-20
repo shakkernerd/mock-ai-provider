@@ -16,8 +16,19 @@ export type ToolCallsResponse = {
 
 export type ScriptedResponse = FinalTextResponse | ToolCallsResponse;
 
+export type ScriptStepMatch = {
+  requestIndex?: number;
+  apiSurface?: string;
+  model?: string;
+  body?: Record<string, unknown>;
+  hasToolResult?: boolean;
+  toolResultName?: string;
+  priorToolCallName?: string;
+};
+
 export type ScriptStep = {
   id?: string;
+  match?: ScriptStepMatch;
   respond: ScriptedResponse;
 };
 
@@ -28,5 +39,10 @@ export type MockScript = {
 
 export type ScriptRuntime = {
   script: MockScript;
-  nextStep(): ScriptStep;
+  replaceScript(script: MockScript): void;
+  nextStep(context: {
+    apiSurface: string;
+    model?: string | null;
+    requestBody: Record<string, unknown>;
+  }): ScriptStep;
 };
