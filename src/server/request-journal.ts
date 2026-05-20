@@ -17,6 +17,8 @@ export type RequestJournalEntry = {
   respondedAtEpochMs: number;
   durationMs: number;
   status: number;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
   matchedScriptStep: string | null;
   responseType: string | null;
   toolCallsEmitted: number;

@@ -105,6 +105,16 @@ describe("OpenAI Chat Completions mock", () => {
         { role: "user", content: "Hello" }
       ]
     });
+    expect(providerEntry?.requestHeaders).toMatchObject({
+      authorization: "present",
+      "content-type": "application/json",
+      "x-client-request-id": "client-request-1"
+    });
+    expect(providerEntry?.responseHeaders).toMatchObject({
+      "x-request-id": expect.stringMatching(/^req_/),
+      "openai-version": "2020-10-01",
+      "x-ratelimit-limit-requests": "1000000"
+    });
     expect(providerEntry?.responseBody).toMatchObject({
       object: "chat.completion",
       choices: [

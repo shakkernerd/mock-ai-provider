@@ -1,4 +1,4 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { IncomingHttpHeaders, IncomingMessage, OutgoingHttpHeaders, ServerResponse } from "node:http";
 import type { OpenAiAuthOptions } from "../providers/openai/auth.js";
 import type { OpenAiModel } from "../providers/openai/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
@@ -29,6 +29,7 @@ export async function routeRequest(
   const path = requestPath(req);
   const requestId = createRequestId();
   const clientRequestId = firstHeader(req, "x-client-request-id");
+  const responseHeaders = captureResponseHeaders(res);
 
   const appendJournal = (partial: Omit<RequestJournalEntry, "schemaVersion" | "requestId" | "clientRequestId" | "method" | "path" | "receivedAt" | "receivedAtEpochMs" | "respondedAt" | "respondedAtEpochMs" | "durationMs">) => {
     const responded = nowTimestamp();
@@ -43,6 +44,8 @@ export async function routeRequest(
       respondedAt: responded.iso,
       respondedAtEpochMs: responded.epochMs,
       durationMs: durationMs(received.epochMs, responded.epochMs),
+      requestHeaders: summarizeRequestHeaders(req.headers),
+      responseHeaders: summarizeResponseHeaders(responseHeaders()),
       ...partial
     });
   };
@@ -138,6 +141,71 @@ export async function routeRequest(
     }
   }, { "x-request-id": requestId });
   appendJournal(emptyJournalFields({ status: 404, errorClass: "not_found_error" }));
+}
+
+function summarizeRequestHeaders(headers: IncomingHttpHeaders): Record<string, string> {
+  const summary: Record<string, string> = {};
+  for (const name of ["authorization", "content-type", "openai-organization", "openai-project", "x-client-request-id"]) {
+    const value = firstHeaderValue(headers[name]);
+    if (!value) {
+      continue;
+    }
+    summary[name] = name === "authorization" ? "present" : value;
+  }
+  return summary;
+}
+
+function summarizeResponseHeaders(headers: OutgoingHttpHeaders): Record<string, string> {
+  const summary: Record<string, string> = {};
+  for (const name of [
+    "content-type",
+    "x-request-id",
+    "openai-processing-ms",
+    "openai-version",
+    "x-ratelimit-limit-requests",
+    "x-ratelimit-remaining-requests",
+    "x-ratelimit-reset-requests",
+    "x-ratelimit-limit-tokens",
+    "x-ratelimit-remaining-tokens",
+    "x-ratelimit-reset-tokens"
+  ]) {
+    const value = firstHeaderValue(headers[name]);
+    if (value) {
+      summary[name] = value;
+    }
+  }
+  return summary;
+}
+
+function captureResponseHeaders(res: ServerResponse): () => OutgoingHttpHeaders {
+  let captured: OutgoingHttpHeaders = {};
+  const writeHead = res.writeHead.bind(res);
+  res.writeHead = ((statusCode: number, statusMessage?: string | OutgoingHttpHeaders, headers?: OutgoingHttpHeaders) => {
+    const nextHeaders = typeof statusMessage === "object" && statusMessage !== null ? statusMessage : headers;
+    captured = {
+      ...captured,
+      ...normalizeOutgoingHeaders(nextHeaders ?? {})
+    };
+    return typeof statusMessage === "string"
+      ? writeHead(statusCode, statusMessage, headers)
+      : writeHead(statusCode, statusMessage);
+  }) as typeof res.writeHead;
+  return () => captured;
+}
+
+function normalizeOutgoingHeaders(headers: OutgoingHttpHeaders): OutgoingHttpHeaders {
+  const normalized: OutgoingHttpHeaders = {};
+  for (const [name, value] of Object.entries(headers)) {
+    normalized[name.toLowerCase()] = value;
+  }
+  return normalized;
+}
+
+function firstHeaderValue(value: string | number | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value === undefined ? undefined : String(value);
 }
 
 function readPositiveIntegerQuery(req: IncomingMessage, name: string): number | undefined {
