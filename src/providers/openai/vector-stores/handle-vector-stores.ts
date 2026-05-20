@@ -50,14 +50,16 @@ export async function routeOpenAiVectorStores(params: {
       return writeSuccess(params, created, bodyText, requestBody);
     }
 
-    const fileMatch = /^vector_stores\/([^/]+)\/files(?:\/([^/]+)(?:\/content)?)?$/.exec(suffix);
+    const fileMatch = /^vector_stores\/([^/]+)\/files(?:\/([^/]+)(\/content)?)?$/.exec(suffix);
     if (fileMatch) {
       const vectorStoreId = decodeURIComponent(fileMatch[1] ?? "");
       const fileId = fileMatch[2] ? decodeURIComponent(fileMatch[2]) : null;
+      const content = fileMatch[3] === "/content";
       return await routeVectorStoreFiles({
         ...params,
         vectorStoreId,
         fileId,
+        content,
         bodyText
       });
     }
@@ -143,6 +145,7 @@ async function routeVectorStoreFiles(params: {
   vectorStores: OpenAiVectorStoreStore;
   vectorStoreId: string;
   fileId: string | null;
+  content: boolean;
   bodyText: string;
 }): Promise<OpenAiVectorStoresRouteResult> {
   let bodyText = params.bodyText;
@@ -173,6 +176,19 @@ async function routeVectorStoreFiles(params: {
 
   if (!params.fileId) {
     throw notFoundError("vector store file route not found");
+  }
+
+  if (params.req.method === "GET" && params.content) {
+    const file = params.vectorStores.retrieveFile(params.vectorStoreId, params.fileId);
+    if (!file) {
+      throw notFoundError(`No vector store file found with id '${params.fileId}'`);
+    }
+    return writeSuccess(params, {
+      object: "vector_store.file_content.page",
+      data: [],
+      has_more: false,
+      next_page: null
+    }, bodyText);
   }
 
   if (params.req.method === "GET") {

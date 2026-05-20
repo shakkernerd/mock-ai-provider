@@ -118,6 +118,15 @@ describe("OpenAI Vector Stores mock", () => {
       attributes: { section: "updated" }
     });
 
+    const contentResponse = await jsonRequest("GET", `/v1/vector_stores/${created.id}/files/file-abc123/content`);
+    expect(contentResponse.status).toBe(200);
+    await expect(contentResponse.json()).resolves.toEqual({
+      object: "vector_store.file_content.page",
+      data: [],
+      has_more: false,
+      next_page: null
+    });
+
     const deleteFileResponse = await jsonRequest("DELETE", `/v1/vector_stores/${created.id}/files/file-abc123`);
     expect(deleteFileResponse.status).toBe(200);
     await expect(deleteFileResponse.json()).resolves.toEqual({
@@ -138,7 +147,7 @@ describe("OpenAI Vector Stores mock", () => {
     expect(retrieveAfterDelete.status).toBe(404);
 
     const journal = await readJournal(requestLogPath);
-    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(10);
+    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(11);
     expect(journal.find((entry) => entry.path === "/v1/vector_stores")).toMatchObject({
       providerId: "openai",
       apiSurface: "vector_stores",
