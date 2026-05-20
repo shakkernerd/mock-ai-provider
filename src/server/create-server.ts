@@ -1,17 +1,19 @@
 import { createServer, type Server } from "node:http";
 import { createRequestJournal } from "./request-journal.js";
-import { createScriptRuntime, loadScript } from "./script-loader.js";
+import { createScriptRuntime, DEFAULT_SCRIPT, loadScript } from "./script-loader.js";
 import { routeRequest } from "./router.js";
+import type { MockScript } from "../scripts/types.js";
 
 export type CreateServerOptions = {
   providers: readonly string[];
-  scriptPath: string;
+  scriptPath?: string;
+  script?: MockScript;
   requestLogPath: string;
 };
 
 export async function createMockAiProviderServer(options: CreateServerOptions): Promise<Server> {
   const providers = normalizeProviders(options.providers);
-  const script = await loadScript(options.scriptPath);
+  const script = options.script ?? (options.scriptPath ? await loadScript(options.scriptPath) : DEFAULT_SCRIPT);
   const runtime = createScriptRuntime(script);
   const journal = createRequestJournal(options.requestLogPath);
 

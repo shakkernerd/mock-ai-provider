@@ -15,7 +15,7 @@ async function main(argv: string[]): Promise<void> {
     options: {
       providers: { type: "string" },
       script: { type: "string" },
-      port: { type: "string", default: "8787" },
+      port: { type: "string", default: "31337" },
       "request-log": { type: "string" },
       help: { type: "boolean", short: "h" }
     },
@@ -28,12 +28,12 @@ async function main(argv: string[]): Promise<void> {
   }
 
   const providers = requiredString(values.providers, "--providers").split(",");
-  const scriptPath = requiredString(values.script, "--script");
-  const requestLogPath = requiredString(values["request-log"], "--request-log");
+  const scriptPath = optionalString(values.script);
+  const requestLogPath = optionalString(values["request-log"]) ?? ".mock-ai-provider/requests.jsonl";
   const port = parsePort(requiredString(values.port, "--port"));
   const server = await createMockAiProviderServer({
     providers,
-    scriptPath,
+    ...(scriptPath ? { scriptPath } : {}),
     requestLogPath
   });
 
@@ -58,6 +58,10 @@ function requiredString(value: unknown, name: string): string {
   return value;
 }
 
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
 function parsePort(value: string): number {
   const port = Number(value);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -69,7 +73,7 @@ function parsePort(value: string): number {
 function printUsage(): void {
   process.stdout.write([
     "Usage:",
-    "  mock-ai-provider serve --providers openai --script <path> --port <number|0> --request-log <path>",
+    "  mock-ai-provider serve --providers openai [--script <path>] [--port <number|0>] [--request-log <path>]",
     ""
   ].join("\n"));
 }

@@ -109,6 +109,42 @@ describe("OpenAI Chat Completions mock", () => {
     };
     expect(body.choices[0]?.message.content).toBe("Hello from the mock provider.");
   });
+
+  it("uses the built-in script when no script path is provided", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mock-ai-provider-default-script-"));
+    const defaultServer = await createMockAiProviderServer({
+      providers: ["openai"],
+      requestLogPath: join(dir, "requests.jsonl")
+    });
+    try {
+      await new Promise<void>((resolve) => {
+        defaultServer.listen(0, "127.0.0.1", resolve);
+      });
+      const address = defaultServer.address();
+      if (!address || typeof address !== "object") {
+        throw new Error("server did not bind to a TCP port");
+      }
+
+      const response = await fetch(`http://127.0.0.1:${address.port}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-mock",
+          messages: [{ role: "user", content: "Hello" }]
+        })
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json() as {
+        choices: Array<{ message: { content: string } }>;
+      };
+      expect(body.choices[0]?.message.content).toBe("Hello from mock AI provider");
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        defaultServer.close((error) => error ? reject(error) : resolve());
+      });
+    }
+  });
 });
 
 async function readJournal(path: string): Promise<Array<Record<string, unknown>>> {

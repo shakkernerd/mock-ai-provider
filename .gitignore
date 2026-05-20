@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.mock-ai-provider/
 *.log
 *.jsonl
 .DS_Store

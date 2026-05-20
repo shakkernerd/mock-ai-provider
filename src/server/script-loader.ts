@@ -3,6 +3,19 @@ import { parseJsonObject } from "../shared/json.js";
 import { validateScript } from "../scripts/validate.js";
 import type { MockScript, ScriptRuntime, ScriptStep } from "../scripts/types.js";
 
+export const DEFAULT_SCRIPT: MockScript = {
+  id: "default",
+  steps: [
+    {
+      id: "default-final",
+      respond: {
+        type: "final-text",
+        text: "Hello from mock AI provider"
+      }
+    }
+  ]
+};
+
 export async function loadScript(path: string): Promise<MockScript> {
   const text = await readFile(path, "utf8");
   return validateScript(parseJsonObject(text));
