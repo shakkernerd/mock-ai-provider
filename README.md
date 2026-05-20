@@ -82,6 +82,11 @@ full parsed request body for JSON requests, useful request and response headers,
 status, provider, API surface, model, script step, response body or response
 summary, emitted tool calls, and emitted final text.
 
+Secret-shaped fields such as API keys, bearer tokens, OAuth tokens, passwords,
+client secrets, and private keys are redacted before the entry is stored or
+returned from admin routes. The normal `Authorization` header is logged only as
+`present`.
+
 Binary upload bodies are summarized with filename, content type, and byte
 length instead of storing raw binary in the journal.
 
