@@ -4,7 +4,7 @@ import {
   createToolCallId
 } from "../../shared/ids.js";
 import { readString, type JsonRecord } from "../../shared/json.js";
-import type { ScriptStep } from "../../scripts/types.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
 
 export type OpenAiResponseRenderResult = {
   body: JsonRecord;
@@ -14,7 +14,10 @@ export type OpenAiResponseRenderResult = {
   toolCallsEmitted: number;
 };
 
-export function renderResponse(requestBody: JsonRecord, step: ScriptStep): OpenAiResponseRenderResult {
+export function renderResponse(
+  requestBody: JsonRecord,
+  step: ScriptStep & { respond: RenderableScriptedResponse }
+): OpenAiResponseRenderResult {
   const model = readString(requestBody, "model") ?? "gpt-mock";
   const response = createBaseResponse({ model, status: "completed" });
   if (step.respond.type === "tool-calls") {
@@ -71,7 +74,7 @@ export function renderResponse(requestBody: JsonRecord, step: ScriptStep): OpenA
   };
 }
 
-export function renderResponseStreamEvents(requestBody: JsonRecord, step: ScriptStep): {
+export function renderResponseStreamEvents(requestBody: JsonRecord, step: ScriptStep & { respond: RenderableScriptedResponse }): {
   events: JsonRecord[];
   result: OpenAiResponseRenderResult;
 } {

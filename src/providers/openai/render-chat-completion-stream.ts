@@ -3,7 +3,7 @@ import { createChatCompletionId } from "../../shared/ids.js";
 import { readString, type JsonRecord } from "../../shared/json.js";
 import { corsHeaders } from "../../shared/http.js";
 import { writeSseDone, writeSseJson } from "../../shared/sse.js";
-import type { ScriptStep } from "../../scripts/types.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
 import { renderFunctionToolCalls } from "./tool-calls.js";
 
 export type OpenAiChatStreamResult = {
@@ -17,7 +17,7 @@ export type OpenAiChatStreamResult = {
 export function writeChatCompletionStream(params: {
   res: ServerResponse;
   requestBody: JsonRecord;
-  step: ScriptStep;
+  step: ScriptStep & { respond: RenderableScriptedResponse };
   headers: Record<string, string>;
 }): OpenAiChatStreamResult {
   const model = readString(params.requestBody, "model") ?? "mock-model";

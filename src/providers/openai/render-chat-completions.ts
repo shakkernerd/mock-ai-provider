@@ -1,6 +1,6 @@
 import { createChatCompletionId } from "../../shared/ids.js";
 import { readString, type JsonRecord } from "../../shared/json.js";
-import type { ScriptStep } from "../../scripts/types.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
 import { renderFunctionToolCalls } from "./tool-calls.js";
 
 export type OpenAiChatRenderResult = {
@@ -12,7 +12,10 @@ export type OpenAiChatRenderResult = {
   toolCallsEmitted: number;
 };
 
-export function renderChatCompletion(requestBody: JsonRecord, step: ScriptStep): OpenAiChatRenderResult {
+export function renderChatCompletion(
+  requestBody: JsonRecord,
+  step: ScriptStep & { respond: RenderableScriptedResponse }
+): OpenAiChatRenderResult {
   const model = readString(requestBody, "model") ?? "mock-model";
   const stream = requestBody.stream === true;
   const id = createChatCompletionId();

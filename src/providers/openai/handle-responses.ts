@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { renderResponse, renderResponseStreamEvents } from "./render-responses.js";
+import { isRenderableStep, isTerminalStep, resolveScriptStep, writeTerminalScriptResponse } from "./scripted-response.js";
 import { corsHeaders, readRequestBody, writeJson } from "../../shared/http.js";
 import { parseJsonObject, readString } from "../../shared/json.js";
 import { writeSseDone, writeSseJson } from "../../shared/sse.js";
@@ -43,9 +44,34 @@ export async function handleOpenAiResponses(params: {
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
     });
+    const resolvedStep = await resolveScriptStep(step);
+    if (isTerminalStep(resolvedStep)) {
+      const terminal = writeTerminalScriptResponse({
+        res: params.res,
+        response: resolvedStep.respond,
+        headers
+      });
+      return {
+        status: terminal.status,
+        model: readString(requestBody, "model") ?? null,
+        stream: requestBody.stream === true,
+        matchedScriptStep: step.id ?? null,
+        responseType: terminal.responseType,
+        finalText: null,
+        toolCallsEmitted: 0,
+        bodyBytes: Buffer.byteLength(bodyText),
+        requestBody,
+        ...(terminal.responseBody ? { responseBody: terminal.responseBody } : {}),
+        ...(terminal.responseSummary ? { responseSummary: terminal.responseSummary } : {}),
+        errorClass: terminal.errorClass
+      };
+    }
+    if (!isRenderableStep(resolvedStep)) {
+      throw new Error("script response did not resolve to a renderable response");
+    }
 
     if (requestBody.stream === true) {
-      const rendered = renderResponseStreamEvents(requestBody, step);
+      const rendered = renderResponseStreamEvents(requestBody, resolvedStep);
       params.res.writeHead(200, {
         ...corsHeaders(),
         "content-type": "text/event-stream; charset=utf-8",
@@ -79,7 +105,7 @@ export async function handleOpenAiResponses(params: {
       };
     }
 
-    const rendered = renderResponse(requestBody, step);
+    const rendered = renderResponse(requestBody, resolvedStep);
     writeJson(params.res, 200, rendered.body, headers);
     return {
       status: 200,

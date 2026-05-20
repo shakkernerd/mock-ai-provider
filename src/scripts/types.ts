@@ -14,7 +14,44 @@ export type ToolCallsResponse = {
   toolCalls: FunctionToolCall[];
 };
 
-export type ScriptedResponse = FinalTextResponse | ToolCallsResponse;
+export type ScriptedErrorResponse = {
+  type: "error";
+  status?: number;
+  message: string;
+  errorType?: string;
+  param?: string;
+  code?: string;
+};
+
+export type ScriptedDelayResponse = {
+  type: "delay";
+  ms: number;
+  then: FinalTextResponse | ToolCallsResponse;
+};
+
+export type ScriptedMalformedResponse = {
+  type: "malformed";
+  status?: number;
+  body: string;
+  contentType?: string;
+};
+
+export type ScriptedTimeoutResponse = {
+  type: "timeout";
+  ms?: number;
+};
+
+export type TerminalScriptedResponse =
+  | ScriptedErrorResponse
+  | ScriptedMalformedResponse
+  | ScriptedTimeoutResponse;
+
+export type RenderableScriptedResponse = FinalTextResponse | ToolCallsResponse;
+
+export type ScriptedResponse =
+  | RenderableScriptedResponse
+  | TerminalScriptedResponse
+  | ScriptedDelayResponse;
 
 export type ScriptStepMatch = {
   requestIndex?: number;
