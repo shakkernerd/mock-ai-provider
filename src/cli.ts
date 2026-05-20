@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { createMockAiProviderServer } from "./server/create-server.js";
+import { installShutdownHandlers, listen } from "./server/listen.js";
 
 async function main(argv: string[]): Promise<void> {
   const command = argv[0];
@@ -47,12 +48,8 @@ async function main(argv: string[]): Promise<void> {
     }
   });
 
-  await new Promise<void>((resolve) => {
-    server.listen(port, "127.0.0.1", resolve);
-  });
-
-  const address = server.address();
-  const boundPort = typeof address === "object" && address ? address.port : port;
+  const { port: boundPort } = await listen(server, { port, host: "127.0.0.1" });
+  installShutdownHandlers(server);
   process.stdout.write(`${JSON.stringify({
     ok: true,
     providers,
