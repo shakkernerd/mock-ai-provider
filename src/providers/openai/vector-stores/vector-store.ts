@@ -1,4 +1,4 @@
-import { createVectorStoreId } from "../../../shared/ids.js";
+import { createVectorStoreFileBatchId, createVectorStoreId } from "../../../shared/ids.js";
 import { isRecord, readString, type JsonRecord } from "../../../shared/json.js";
 
 export type OpenAiVectorStore = {
@@ -33,6 +33,15 @@ export type OpenAiVectorStoreFile = {
   attributes: JsonRecord;
 };
 
+export type OpenAiVectorStoreFileBatch = {
+  id: string;
+  object: "vector_store.file_batch";
+  created_at: number;
+  vector_store_id: string;
+  status: "completed" | "cancelled";
+  file_counts: OpenAiVectorStore["file_counts"];
+};
+
 export type OpenAiVectorStoreStore = {
   create(requestBody: JsonRecord): OpenAiVectorStore;
   update(id: string, requestBody: JsonRecord): OpenAiVectorStore | null;
@@ -44,11 +53,16 @@ export type OpenAiVectorStoreStore = {
   retrieveFile(vectorStoreId: string, fileId: string): OpenAiVectorStoreFile | null;
   deleteFile(vectorStoreId: string, fileId: string): boolean | null;
   listFiles(vectorStoreId: string): OpenAiVectorStoreFile[] | null;
+  createFileBatch(vectorStoreId: string, requestBody: JsonRecord): OpenAiVectorStoreFileBatch | null;
+  retrieveFileBatch(vectorStoreId: string, batchId: string): OpenAiVectorStoreFileBatch | null;
+  cancelFileBatch(vectorStoreId: string, batchId: string): OpenAiVectorStoreFileBatch | null;
+  listFileBatchFiles(vectorStoreId: string, batchId: string): OpenAiVectorStoreFile[] | null;
 };
 
 export function createOpenAiVectorStoreStore(): OpenAiVectorStoreStore {
   const stores = new Map<string, OpenAiVectorStore>();
   const filesByStore = new Map<string, Map<string, OpenAiVectorStoreFile>>();
+  const batchesByStore = new Map<string, Map<string, OpenAiVectorStoreFileBatch>>();
   return {
     create(requestBody) {
       const created = createVectorStore(requestBody);
@@ -73,6 +87,7 @@ export function createOpenAiVectorStoreStore(): OpenAiVectorStoreStore {
     },
     delete(id) {
       filesByStore.delete(id);
+      batchesByStore.delete(id);
       return stores.delete(id);
     },
     list() {
@@ -118,6 +133,46 @@ export function createOpenAiVectorStoreStore(): OpenAiVectorStoreStore {
     },
     listFiles(vectorStoreId) {
       if (!stores.has(vectorStoreId)) {
+        return null;
+      }
+      return [...(filesByStore.get(vectorStoreId)?.values() ?? [])]
+        .sort((left, right) => right.created_at - left.created_at);
+    },
+    createFileBatch(vectorStoreId, requestBody) {
+      const store = stores.get(vectorStoreId);
+      if (!store) {
+        return null;
+      }
+      const fileIds = readFileIds(requestBody.file_ids);
+      for (const fileId of fileIds) {
+        readFileMap(filesByStore, vectorStoreId).set(fileId, createVectorStoreFile(vectorStoreId, requestBody, fileId));
+      }
+      refreshFileCounts(store, filesByStore.get(vectorStoreId)?.size ?? 0);
+      const batch = {
+        id: createVectorStoreFileBatchId(),
+        object: "vector_store.file_batch",
+        created_at: Math.floor(Date.now() / 1000),
+        vector_store_id: vectorStoreId,
+        status: "completed",
+        file_counts: { ...store.file_counts }
+      } satisfies OpenAiVectorStoreFileBatch;
+      readBatchMap(batchesByStore, vectorStoreId).set(batch.id, batch);
+      return batch;
+    },
+    retrieveFileBatch(vectorStoreId, batchId) {
+      return batchesByStore.get(vectorStoreId)?.get(batchId) ?? null;
+    },
+    cancelFileBatch(vectorStoreId, batchId) {
+      const batch = batchesByStore.get(vectorStoreId)?.get(batchId);
+      if (!batch) {
+        return null;
+      }
+      const cancelled = { ...batch, status: "cancelled" as const };
+      batchesByStore.get(vectorStoreId)?.set(batchId, cancelled);
+      return cancelled;
+    },
+    listFileBatchFiles(vectorStoreId, batchId) {
+      if (!batchesByStore.get(vectorStoreId)?.has(batchId)) {
         return null;
       }
       return [...(filesByStore.get(vectorStoreId)?.values() ?? [])]
@@ -176,6 +231,25 @@ function readFileMap(
     filesByStore.set(vectorStoreId, files);
   }
   return files;
+}
+
+function readBatchMap(
+  batchesByStore: Map<string, Map<string, OpenAiVectorStoreFileBatch>>,
+  vectorStoreId: string
+): Map<string, OpenAiVectorStoreFileBatch> {
+  let batches = batchesByStore.get(vectorStoreId);
+  if (!batches) {
+    batches = new Map();
+    batchesByStore.set(vectorStoreId, batches);
+  }
+  return batches;
+}
+
+function readFileIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || !value.every((item) => typeof item === "string" && item.length > 0)) {
+    throw new Error("file_ids must be a non-empty array of strings");
+  }
+  return value as string[];
 }
 
 function refreshFileCounts(store: OpenAiVectorStore, completed: number): void {

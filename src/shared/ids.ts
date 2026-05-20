@@ -47,3 +47,7 @@ export function createCompletionId(): string {
 export function createVectorStoreId(): string {
   return `vs_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createVectorStoreFileBatchId(): string {
+  return `vsfb_${randomUUID().replaceAll("-", "")}`;
+}

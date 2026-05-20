@@ -135,6 +135,44 @@ describe("OpenAI Vector Stores mock", () => {
       deleted: true
     });
 
+    const batchResponse = await jsonRequest("POST", `/v1/vector_stores/${created.id}/file_batches`, {
+      file_ids: ["file-batch-1", "file-batch-2"]
+    });
+    expect(batchResponse.status).toBe(200);
+    const batch = await batchResponse.json() as {
+      id: string;
+      object: string;
+      status: string;
+      file_counts: Record<string, number>;
+    };
+    expect(batch).toMatchObject({
+      object: "vector_store.file_batch",
+      status: "completed",
+      file_counts: {
+        completed: 2,
+        total: 2
+      }
+    });
+
+    const batchFilesResponse = await jsonRequest("GET", `/v1/vector_stores/${created.id}/file_batches/${batch.id}/files`);
+    expect(batchFilesResponse.status).toBe(200);
+    await expect(batchFilesResponse.json()).resolves.toMatchObject({
+      object: "list",
+      data: [
+        { id: "file-batch-1", object: "vector_store.file" },
+        { id: "file-batch-2", object: "vector_store.file" }
+      ],
+      has_more: false
+    });
+
+    const cancelBatchResponse = await jsonRequest("POST", `/v1/vector_stores/${created.id}/file_batches/${batch.id}/cancel`);
+    expect(cancelBatchResponse.status).toBe(200);
+    await expect(cancelBatchResponse.json()).resolves.toMatchObject({
+      id: batch.id,
+      object: "vector_store.file_batch",
+      status: "cancelled"
+    });
+
     const deleteResponse = await jsonRequest("DELETE", `/v1/vector_stores/${created.id}`);
     expect(deleteResponse.status).toBe(200);
     await expect(deleteResponse.json()).resolves.toEqual({
@@ -147,7 +185,7 @@ describe("OpenAI Vector Stores mock", () => {
     expect(retrieveAfterDelete.status).toBe(404);
 
     const journal = await readJournal(requestLogPath);
-    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(11);
+    expect(journal.filter((entry) => entry.apiSurface === "vector_stores")).toHaveLength(14);
     expect(journal.find((entry) => entry.path === "/v1/vector_stores")).toMatchObject({
       providerId: "openai",
       apiSurface: "vector_stores",

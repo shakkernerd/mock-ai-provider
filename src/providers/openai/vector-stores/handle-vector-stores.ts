@@ -50,6 +50,20 @@ export async function routeOpenAiVectorStores(params: {
       return writeSuccess(params, created, bodyText, requestBody);
     }
 
+    const batchMatch = /^vector_stores\/([^/]+)\/file_batches(?:\/([^/]+)(?:\/(cancel|files))?)?$/.exec(suffix);
+    if (batchMatch) {
+      const vectorStoreId = decodeURIComponent(batchMatch[1] ?? "");
+      const batchId = batchMatch[2] ? decodeURIComponent(batchMatch[2]) : null;
+      const action = batchMatch[3] ?? null;
+      return await routeVectorStoreFileBatches({
+        ...params,
+        vectorStoreId,
+        batchId,
+        action,
+        bodyText
+      });
+    }
+
     const fileMatch = /^vector_stores\/([^/]+)\/files(?:\/([^/]+)(\/content)?)?$/.exec(suffix);
     if (fileMatch) {
       const vectorStoreId = decodeURIComponent(fileMatch[1] ?? "");
@@ -135,6 +149,66 @@ export async function routeOpenAiVectorStores(params: {
       errorClass
     };
   }
+}
+
+async function routeVectorStoreFileBatches(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  requestId: string;
+  receivedAtEpochMs: number;
+  vectorStores: OpenAiVectorStoreStore;
+  vectorStoreId: string;
+  batchId: string | null;
+  action: string | null;
+  bodyText: string;
+}): Promise<OpenAiVectorStoresRouteResult> {
+  let bodyText = params.bodyText;
+
+  if (params.req.method === "POST" && !params.batchId) {
+    bodyText = await readRequestBody(params.req);
+    const requestBody = parseJsonObject(bodyText);
+    const batch = params.vectorStores.createFileBatch(params.vectorStoreId, requestBody);
+    if (!batch) {
+      throw notFoundError(`No vector store found with id '${params.vectorStoreId}'`);
+    }
+    return writeSuccess(params, batch, bodyText, requestBody);
+  }
+
+  if (!params.batchId) {
+    throw notFoundError("vector store file batch route not found");
+  }
+
+  if (params.req.method === "GET" && !params.action) {
+    const batch = params.vectorStores.retrieveFileBatch(params.vectorStoreId, params.batchId);
+    if (!batch) {
+      throw notFoundError(`No vector store file batch found with id '${params.batchId}'`);
+    }
+    return writeSuccess(params, batch, bodyText);
+  }
+
+  if (params.req.method === "POST" && params.action === "cancel") {
+    const batch = params.vectorStores.cancelFileBatch(params.vectorStoreId, params.batchId);
+    if (!batch) {
+      throw notFoundError(`No vector store file batch found with id '${params.batchId}'`);
+    }
+    return writeSuccess(params, batch, bodyText);
+  }
+
+  if (params.req.method === "GET" && params.action === "files") {
+    const files = params.vectorStores.listFileBatchFiles(params.vectorStoreId, params.batchId);
+    if (!files) {
+      throw notFoundError(`No vector store file batch found with id '${params.batchId}'`);
+    }
+    return writeSuccess(params, {
+      object: "list",
+      data: files,
+      first_id: files[0]?.id ?? null,
+      last_id: files.at(-1)?.id ?? null,
+      has_more: false
+    }, bodyText);
+  }
+
+  throw notFoundError("vector store file batch route not found");
 }
 
 async function routeVectorStoreFiles(params: {
