@@ -51,3 +51,11 @@ export function createVectorStoreId(): string {
 export function createVectorStoreFileBatchId(): string {
   return `vsfb_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createUploadId(): string {
+  return `upload_${randomUUID().replaceAll("-", "")}`;
+}
+
+export function createUploadPartId(): string {
+  return `part_${randomUUID().replaceAll("-", "")}`;
+}

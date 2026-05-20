@@ -11,6 +11,7 @@ import {
 } from "../providers/openai/models/model-catalog.js";
 import { createOpenAiFileStore, type OpenAiFileStore } from "../providers/openai/files/file-store.js";
 import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/media/video-store.js";
+import { createOpenAiUploadStore, type OpenAiUploadStore } from "../providers/openai/uploads/upload-store.js";
 import { createOpenAiVectorStoreStore, type OpenAiVectorStoreStore } from "../providers/openai/vector-stores/vector-store.js";
 import type { MockScript } from "../scripts/types.js";
 
@@ -25,6 +26,7 @@ export type CreateServerOptions = {
   openAiBatches?: OpenAiBatchStore;
   openAiFiles?: OpenAiFileStore;
   openAiVideos?: OpenAiVideoStore;
+  openAiUploads?: OpenAiUploadStore;
   openAiVectorStores?: OpenAiVectorStoreStore;
 };
 
@@ -38,6 +40,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
   const openAiBatches = options.openAiBatches ?? createOpenAiBatchStore();
   const openAiFiles = options.openAiFiles ?? createOpenAiFileStore();
   const openAiVideos = options.openAiVideos ?? createOpenAiVideoStore();
+  const openAiUploads = options.openAiUploads ?? createOpenAiUploadStore();
   const openAiVectorStores = options.openAiVectorStores ?? createOpenAiVectorStoreStore();
 
   return createServer((req, res) => {
@@ -50,6 +53,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
       openAiBatches,
       openAiFiles,
       openAiVideos,
+      openAiUploads,
       openAiVectorStores
     }).catch((error: unknown) => {
       if (!res.headersSent) {

@@ -5,6 +5,7 @@ import type { OpenAiFileStore } from "../providers/openai/files/file-store.js";
 import type { OpenAiModel } from "../providers/openai/models/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
 import type { OpenAiVideoStore } from "../providers/openai/media/video-store.js";
+import type { OpenAiUploadStore } from "../providers/openai/uploads/upload-store.js";
 import type { OpenAiVectorStoreStore } from "../providers/openai/vector-stores/vector-store.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, readRequestBody, requestPath, writeJson, writeNoContent } from "../shared/http.js";
@@ -23,6 +24,7 @@ export type RouterOptions = {
   openAiBatches: OpenAiBatchStore;
   openAiFiles: OpenAiFileStore;
   openAiVideos: OpenAiVideoStore;
+  openAiUploads: OpenAiUploadStore;
   openAiVectorStores: OpenAiVectorStoreStore;
 };
 
@@ -133,6 +135,7 @@ export async function routeRequest(
       batches: options.openAiBatches,
       files: options.openAiFiles,
       videos: options.openAiVideos,
+      uploads: options.openAiUploads,
       vectorStores: options.openAiVectorStores
     }
   });
