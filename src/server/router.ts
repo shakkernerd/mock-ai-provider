@@ -7,6 +7,7 @@ import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiResponses } from "../providers/openai/handle-responses.js";
 import {
   handleOpenAiCreateVideo,
+  handleOpenAiDeleteVideo,
   handleOpenAiListVideos,
   handleOpenAiRetrieveVideo,
   handleOpenAiVideoContent
@@ -409,6 +410,9 @@ async function handleOpenAiVideoRoute(params: {
   const videoId = readOpenAiVideoId(params.path);
   if (params.req.method === "GET" && videoId && params.path.endsWith("/content")) {
     return handleOpenAiVideoContent({ ...params, videoId });
+  }
+  if (params.req.method === "DELETE" && videoId) {
+    return handleOpenAiDeleteVideo({ ...params, videoId });
   }
   if (params.req.method === "GET" && videoId) {
     return handleOpenAiRetrieveVideo({ ...params, videoId });

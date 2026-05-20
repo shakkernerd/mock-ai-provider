@@ -36,7 +36,7 @@ describe("OpenAI Videos mock", () => {
     }
   });
 
-  it("creates, lists, retrieves, and downloads video jobs", async () => {
+  it("creates, lists, retrieves, downloads, and deletes video jobs", async () => {
     const form = new FormData();
     form.set("model", "sora-2");
     form.set("prompt", "Show the MIP logo moving gently.");
@@ -106,6 +106,13 @@ describe("OpenAI Videos mock", () => {
         videoId: created.id
       }
     });
+
+    const deleteResponse = await fetch(`${baseUrl}/v1/videos/${created.id}`, { method: "DELETE" });
+    expect(deleteResponse.status).toBe(200);
+    expect(await deleteResponse.json()).toMatchObject({ id: created.id, object: "video" });
+
+    const afterDeleteResponse = await fetch(`${baseUrl}/v1/videos/${created.id}`);
+    expect(afterDeleteResponse.status).toBe(404);
   });
 
   it("rejects missing prompts", async () => {
@@ -119,6 +126,26 @@ describe("OpenAI Videos mock", () => {
     const body = await response.json() as { error: { type: string; message: string } };
     expect(body.error.type).toBe("invalid_request_error");
     expect(body.error.message).toContain("prompt");
+  });
+
+  it("rejects unsupported create field values", async () => {
+    const response = await fetch(`${baseUrl}/v1/videos`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "not-a-video-model",
+        prompt: "Show MIP.",
+        seconds: "4"
+      })
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as { error: { type: string; param: string; code: string } };
+    expect(body.error).toMatchObject({
+      type: "invalid_request_error",
+      param: "model",
+      code: "invalid_value"
+    });
   });
 });
 

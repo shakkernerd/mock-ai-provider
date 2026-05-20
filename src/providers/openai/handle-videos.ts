@@ -151,6 +151,41 @@ export function handleOpenAiVideoContent(params: {
   };
 }
 
+export function handleOpenAiDeleteVideo(params: {
+  res: ServerResponse;
+  requestId: string;
+  receivedAtEpochMs: number;
+  videos: OpenAiVideoStore;
+  videoId: string;
+}): OpenAiVideosRouteResult {
+  const job = params.videos.delete(params.videoId);
+  if (!job) {
+    return writeVideoError({
+      error: Object.assign(new Error(`Video '${params.videoId}' was not found.`), {
+        statusCode: 404,
+        errorType: "not_found_error",
+        code: "video_not_found",
+        param: "video_id"
+      }),
+      bodyBytes: 0,
+      res: params.res,
+      requestId: params.requestId,
+      receivedAtEpochMs: params.receivedAtEpochMs
+    });
+  }
+  writeJson(params.res, 200, job, openAiResponseHeaders({
+    requestId: params.requestId,
+    receivedAtEpochMs: params.receivedAtEpochMs
+  }));
+  return {
+    status: 200,
+    model: job.model,
+    bodyBytes: 0,
+    responseBody: job,
+    errorClass: null
+  };
+}
+
 function parseVideoCreateRequest(contentType: string | undefined, body: Buffer): {
   model: string;
   prompt: string;
@@ -184,7 +219,21 @@ function normalizeVideoCreateFields(fields: Record<string, unknown>): {
   const size = readString(fields, "size") ?? "720x1280";
   const seconds = readString(fields, "seconds") ?? "4";
   const quality = readString(fields, "quality") ?? "standard";
+  assertAllowed({ field: "model", value: model, allowed: ["sora-2", "sora-2-pro"] });
+  assertAllowed({ field: "seconds", value: seconds, allowed: ["4", "8", "12"] });
+  assertAllowed({ field: "size", value: size, allowed: ["720x1280", "1280x720", "1024x1792", "1792x1024"] });
   return { model, prompt, size, seconds, quality };
+}
+
+function assertAllowed(params: { field: string; value: string; allowed: readonly string[] }): void {
+  if (!params.allowed.includes(params.value)) {
+    throw Object.assign(new Error(`${params.field} must be one of: ${params.allowed.join(", ")}`), {
+      statusCode: 400,
+      errorType: "invalid_request_error",
+      param: params.field,
+      code: "invalid_value"
+    });
+  }
 }
 
 function writeVideoError(params: {
@@ -199,7 +248,9 @@ function writeVideoError(params: {
   const responseBody = {
     error: {
       message: params.error instanceof Error ? params.error.message : "request failed",
-      type: errorClass
+      type: errorClass,
+      param: readErrorString(params.error, "param"),
+      code: readErrorString(params.error, "code")
     }
   };
   writeJson(params.res, status, responseBody, openAiResponseHeaders({
@@ -213,4 +264,12 @@ function writeVideoError(params: {
     responseBody,
     errorClass
   };
+}
+
+function readErrorString(error: unknown, property: string): string | null {
+  if (typeof error !== "object" || error === null || !(property in error)) {
+    return null;
+  }
+  const value = (error as Record<string, unknown>)[property];
+  return typeof value === "string" ? value : null;
 }

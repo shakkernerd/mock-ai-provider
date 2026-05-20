@@ -97,7 +97,7 @@ export function writeText(
 export function corsHeaders(): Record<string, string> {
   return {
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-methods": "DELETE,GET,POST,OPTIONS",
     "access-control-allow-headers": "authorization,content-type,x-client-request-id",
     "access-control-expose-headers": [
       "x-request-id",
