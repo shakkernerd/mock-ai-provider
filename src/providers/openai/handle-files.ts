@@ -15,6 +15,33 @@ export type OpenAiFilesRouteResult = {
   errorClass: string | null;
 };
 
+export async function routeOpenAiFiles(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  files: OpenAiFileStore;
+}): Promise<OpenAiFilesRouteResult> {
+  if (params.req.method === "POST" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
+    return handleOpenAiUploadFile(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
+    return handleOpenAiListFiles(params);
+  }
+  const fileId = readOpenAiFileId(params.path);
+  if (params.req.method === "GET" && fileId && params.path.endsWith("/content")) {
+    return handleOpenAiFileContent({ ...params, fileId });
+  }
+  if (params.req.method === "DELETE" && fileId) {
+    return handleOpenAiDeleteFile({ ...params, fileId });
+  }
+  if (params.req.method === "GET" && fileId) {
+    return handleOpenAiRetrieveFile({ ...params, fileId });
+  }
+  return handleOpenAiRetrieveFile({ ...params, fileId: "" });
+}
+
 export async function handleOpenAiUploadFile(params: {
   req: IncomingMessage;
   res: ServerResponse;
@@ -196,4 +223,13 @@ function withoutContent(file: { name: string; filename: string | null; contentTy
     contentType: file.contentType,
     byteLength: file.byteLength
   };
+}
+
+function readOpenAiFileId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/files/" : "/v1/files/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/content$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }

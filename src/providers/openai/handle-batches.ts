@@ -15,6 +15,30 @@ export type OpenAiBatchesRouteResult = {
   errorClass: string | null;
 };
 
+export async function routeOpenAiBatches(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  batches: OpenAiBatchStore;
+}): Promise<OpenAiBatchesRouteResult> {
+  if (params.req.method === "POST" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
+    return handleOpenAiCreateBatch(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
+    return handleOpenAiListBatches(params);
+  }
+  const batchId = readOpenAiBatchId(params.path);
+  if (params.req.method === "POST" && batchId && params.path.endsWith("/cancel")) {
+    return handleOpenAiCancelBatch({ ...params, batchId });
+  }
+  if (params.req.method === "GET" && batchId) {
+    return handleOpenAiRetrieveBatch({ ...params, batchId });
+  }
+  return handleOpenAiRetrieveBatch({ ...params, batchId: "" });
+}
+
 export async function handleOpenAiCreateBatch(params: {
   req: IncomingMessage;
   res: ServerResponse;
@@ -162,4 +186,13 @@ function writeBatchError(params: {
     responseBody,
     errorClass
   };
+}
+
+function readOpenAiBatchId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/batches/" : "/v1/batches/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/cancel$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }

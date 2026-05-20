@@ -17,6 +17,33 @@ export type OpenAiVideosRouteResult = {
   errorClass: string | null;
 };
 
+export async function routeOpenAiVideos(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  videos: OpenAiVideoStore;
+}): Promise<OpenAiVideosRouteResult> {
+  if (params.req.method === "POST" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
+    return handleOpenAiCreateVideo(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
+    return handleOpenAiListVideos(params);
+  }
+  const videoId = readOpenAiVideoId(params.path);
+  if (params.req.method === "GET" && videoId && params.path.endsWith("/content")) {
+    return handleOpenAiVideoContent({ ...params, videoId });
+  }
+  if (params.req.method === "DELETE" && videoId) {
+    return handleOpenAiDeleteVideo({ ...params, videoId });
+  }
+  if (params.req.method === "GET" && videoId) {
+    return handleOpenAiRetrieveVideo({ ...params, videoId });
+  }
+  return handleOpenAiRetrieveVideo({ ...params, videoId: "" });
+}
+
 export async function handleOpenAiCreateVideo(params: {
   req: IncomingMessage;
   res: ServerResponse;
@@ -257,4 +284,13 @@ function writeVideoError(params: {
     responseBody,
     errorClass
   };
+}
+
+function readOpenAiVideoId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/videos/" : "/v1/videos/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/content$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }

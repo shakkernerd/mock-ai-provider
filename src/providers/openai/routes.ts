@@ -1,33 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "./auth.js";
 import type { OpenAiBatchStore } from "./batch-store.js";
-import {
-  handleOpenAiCancelBatch,
-  handleOpenAiCreateBatch,
-  handleOpenAiListBatches,
-  handleOpenAiRetrieveBatch
-} from "./handle-batches.js";
+import { routeOpenAiBatches } from "./handle-batches.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./handle-audio.js";
 import { handleOpenAiChatCompletions } from "./handle-chat-completions.js";
 import { handleOpenAiEmbeddings } from "./handle-embeddings.js";
-import {
-  handleOpenAiDeleteFile,
-  handleOpenAiFileContent,
-  handleOpenAiListFiles,
-  handleOpenAiRetrieveFile,
-  handleOpenAiUploadFile
-} from "./handle-files.js";
+import { routeOpenAiFiles } from "./handle-files.js";
 import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./handle-images.js";
 import { handleOpenAiModels } from "./handle-models.js";
 import { handleOpenAiResponses } from "./handle-responses.js";
-import {
-  handleOpenAiCreateVideo,
-  handleOpenAiDeleteVideo,
-  handleOpenAiListVideos,
-  handleOpenAiRetrieveVideo,
-  handleOpenAiVideoContent,
-  type OpenAiVideosRouteResult
-} from "./handle-videos.js";
+import { routeOpenAiVideos } from "./handle-videos.js";
 import type { OpenAiModel } from "./model-catalog.js";
 import type { OpenAiFileStore } from "./file-store.js";
 import type { OpenAiVideoStore } from "./video-store.js";
@@ -109,7 +91,7 @@ export async function routeOpenAiRequest(params: {
   }
 
   if (isOpenAiBatchesPath(path, options.providers)) {
-    const result = await handleOpenAiBatchRoute({
+    const result = await routeOpenAiBatches({
       req,
       res,
       path,
@@ -154,7 +136,7 @@ export async function routeOpenAiRequest(params: {
   }
 
   if (isOpenAiFilesPath(path, options.providers)) {
-    const result = await handleOpenAiFileRoute({
+    const result = await routeOpenAiFiles({
       req,
       res,
       path,
@@ -224,7 +206,7 @@ export async function routeOpenAiRequest(params: {
   }
 
   if (isOpenAiVideosPath(path, options.providers)) {
-    const result = await handleOpenAiVideoRoute({
+    const result = await routeOpenAiVideos({
       req,
       res,
       path,
@@ -416,84 +398,6 @@ function isOpenAiBatchesPath(path: string, providers: readonly string[]): boolea
   return false;
 }
 
-async function handleOpenAiBatchRoute(params: {
-  req: IncomingMessage;
-  res: ServerResponse;
-  path: string;
-  requestId: string;
-  receivedAtEpochMs: number;
-  batches: OpenAiBatchStore;
-}) {
-  if (params.req.method === "POST" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
-    return handleOpenAiCreateBatch(params);
-  }
-  if (params.req.method === "GET" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
-    return handleOpenAiListBatches(params);
-  }
-  const batchId = readOpenAiBatchId(params.path);
-  if (params.req.method === "POST" && batchId && params.path.endsWith("/cancel")) {
-    return handleOpenAiCancelBatch({ ...params, batchId });
-  }
-  if (params.req.method === "GET" && batchId) {
-    return handleOpenAiRetrieveBatch({ ...params, batchId });
-  }
-  return handleOpenAiRetrieveBatch({ ...params, batchId: "" });
-}
-
-async function handleOpenAiFileRoute(params: {
-  req: IncomingMessage;
-  res: ServerResponse;
-  path: string;
-  requestId: string;
-  receivedAtEpochMs: number;
-  files: OpenAiFileStore;
-}) {
-  if (params.req.method === "POST" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
-    return handleOpenAiUploadFile(params);
-  }
-  if (params.req.method === "GET" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
-    return handleOpenAiListFiles(params);
-  }
-  const fileId = readOpenAiFileId(params.path);
-  if (params.req.method === "GET" && fileId && params.path.endsWith("/content")) {
-    return handleOpenAiFileContent({ ...params, fileId });
-  }
-  if (params.req.method === "DELETE" && fileId) {
-    return handleOpenAiDeleteFile({ ...params, fileId });
-  }
-  if (params.req.method === "GET" && fileId) {
-    return handleOpenAiRetrieveFile({ ...params, fileId });
-  }
-  return handleOpenAiRetrieveFile({ ...params, fileId: "" });
-}
-
-async function handleOpenAiVideoRoute(params: {
-  req: IncomingMessage;
-  res: ServerResponse;
-  path: string;
-  requestId: string;
-  receivedAtEpochMs: number;
-  videos: OpenAiVideoStore;
-}): Promise<OpenAiVideosRouteResult> {
-  if (params.req.method === "POST" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
-    return handleOpenAiCreateVideo(params);
-  }
-  if (params.req.method === "GET" && (params.path === "/v1/videos" || params.path === "/openai/v1/videos")) {
-    return handleOpenAiListVideos(params);
-  }
-  const videoId = readOpenAiVideoId(params.path);
-  if (params.req.method === "GET" && videoId && params.path.endsWith("/content")) {
-    return handleOpenAiVideoContent({ ...params, videoId });
-  }
-  if (params.req.method === "DELETE" && videoId) {
-    return handleOpenAiDeleteVideo({ ...params, videoId });
-  }
-  if (params.req.method === "GET" && videoId) {
-    return handleOpenAiRetrieveVideo({ ...params, videoId });
-  }
-  return handleOpenAiRetrieveVideo({ ...params, videoId: "" });
-}
-
 function readOpenAiModelId(path: string): string | undefined {
   const prefix = path.startsWith("/openai/") ? "/openai/v1/models/" : "/v1/models/";
   if (!path.startsWith(prefix)) {
@@ -501,33 +405,6 @@ function readOpenAiModelId(path: string): string | undefined {
   }
   const modelId = path.slice(prefix.length);
   return modelId.length > 0 ? decodeURIComponent(modelId) : undefined;
-}
-
-function readOpenAiVideoId(path: string): string | undefined {
-  const prefix = path.startsWith("/openai/") ? "/openai/v1/videos/" : "/v1/videos/";
-  if (!path.startsWith(prefix)) {
-    return undefined;
-  }
-  const raw = path.slice(prefix.length).replace(/\/content$/, "");
-  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
-}
-
-function readOpenAiFileId(path: string): string | undefined {
-  const prefix = path.startsWith("/openai/") ? "/openai/v1/files/" : "/v1/files/";
-  if (!path.startsWith(prefix)) {
-    return undefined;
-  }
-  const raw = path.slice(prefix.length).replace(/\/content$/, "");
-  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
-}
-
-function readOpenAiBatchId(path: string): string | undefined {
-  const prefix = path.startsWith("/openai/") ? "/openai/v1/batches/" : "/v1/batches/";
-  if (!path.startsWith(prefix)) {
-    return undefined;
-  }
-  const raw = path.slice(prefix.length).replace(/\/cancel$/, "");
-  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }
 
 function authorizeOpenAiRequest(params: {
