@@ -4,6 +4,7 @@ import type { OpenAiBatchStore } from "./batches/batch-store.js";
 import { routeOpenAiBatches } from "./batches/handle-batches.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./media/handle-audio.js";
 import { handleOpenAiChatCompletions } from "./chat/handle-chat-completions.js";
+import { handleOpenAiCompletions } from "./completions/handle-completions.js";
 import { handleOpenAiEmbeddings } from "./embeddings/handle-embeddings.js";
 import { routeOpenAiFiles } from "./files/handle-files.js";
 import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./media/handle-images.js";
@@ -74,6 +75,17 @@ export async function routeOpenAiRequest(params: {
       receivedAtEpochMs
     });
     return { handled: true, journal: routeResultJournal("chat.completions", result) };
+  }
+
+  if (req.method === "POST" && isOpenAiCompletionsPath(path, options.providers)) {
+    const result = await handleOpenAiCompletions({
+      req,
+      res,
+      runtime: options.runtime,
+      requestId,
+      receivedAtEpochMs
+    });
+    return { handled: true, journal: routeResultJournal("completions", result) };
   }
 
   if (req.method === "POST" && isOpenAiEmbeddingsPath(path, options.providers)) {
@@ -323,6 +335,13 @@ function isOpenAiChatCompletionsPath(path: string, providers: readonly string[])
     return providers.includes("openai");
   }
   return path === "/v1/chat/completions" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiCompletionsPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/completions") {
+    return providers.includes("openai");
+  }
+  return path === "/v1/completions" && providers.length === 1 && providers[0] === "openai";
 }
 
 function isOpenAiModelsPath(path: string, providers: readonly string[]): boolean {

@@ -39,3 +39,7 @@ export function createBatchId(): string {
 export function createModerationId(): string {
   return `modr-${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createCompletionId(): string {
+  return `cmpl-${randomUUID().replaceAll("-", "")}`;
+}
