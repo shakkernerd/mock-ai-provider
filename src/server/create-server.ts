@@ -9,6 +9,7 @@ import {
   loadOpenAiModelCatalog,
   type OpenAiModel
 } from "../providers/openai/models/model-catalog.js";
+import { createOpenAiFineTuningStore, type OpenAiFineTuningStore } from "../providers/openai/fine-tuning/fine-tuning-store.js";
 import { createOpenAiFileStore, type OpenAiFileStore } from "../providers/openai/files/file-store.js";
 import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/media/video-store.js";
 import { createOpenAiUploadStore, type OpenAiUploadStore } from "../providers/openai/uploads/upload-store.js";
@@ -24,6 +25,7 @@ export type CreateServerOptions = {
   openAiModels?: readonly OpenAiModel[];
   openAiModelsPath?: string;
   openAiBatches?: OpenAiBatchStore;
+  openAiFineTuning?: OpenAiFineTuningStore;
   openAiFiles?: OpenAiFileStore;
   openAiVideos?: OpenAiVideoStore;
   openAiUploads?: OpenAiUploadStore;
@@ -38,6 +40,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
   const runtime = createScriptRuntime(script);
   const journal = createRequestJournal(options.requestLogPath);
   const openAiBatches = options.openAiBatches ?? createOpenAiBatchStore();
+  const openAiFineTuning = options.openAiFineTuning ?? createOpenAiFineTuningStore();
   const openAiFiles = options.openAiFiles ?? createOpenAiFileStore();
   const openAiVideos = options.openAiVideos ?? createOpenAiVideoStore();
   const openAiUploads = options.openAiUploads ?? createOpenAiUploadStore();
@@ -51,6 +54,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
       openAiAuth: options.openAiAuth ?? { strict: false },
       openAiModels,
       openAiBatches,
+      openAiFineTuning,
       openAiFiles,
       openAiVideos,
       openAiUploads,

@@ -59,3 +59,11 @@ export function createUploadId(): string {
 export function createUploadPartId(): string {
   return `part_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createFineTuningJobId(): string {
+  return `ftjob-${randomUUID().replaceAll("-", "")}`;
+}
+
+export function createFineTuningEventId(): string {
+  return `ftevent-${randomUUID().replaceAll("-", "")}`;
+}

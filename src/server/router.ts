@@ -1,6 +1,7 @@
 import type { IncomingHttpHeaders, IncomingMessage, OutgoingHttpHeaders, ServerResponse } from "node:http";
 import type { OpenAiAuthOptions } from "../providers/openai/common/auth.js";
 import type { OpenAiBatchStore } from "../providers/openai/batches/batch-store.js";
+import type { OpenAiFineTuningStore } from "../providers/openai/fine-tuning/fine-tuning-store.js";
 import type { OpenAiFileStore } from "../providers/openai/files/file-store.js";
 import type { OpenAiModel } from "../providers/openai/models/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
@@ -22,6 +23,7 @@ export type RouterOptions = {
   openAiAuth: OpenAiAuthOptions;
   openAiModels: readonly OpenAiModel[];
   openAiBatches: OpenAiBatchStore;
+  openAiFineTuning: OpenAiFineTuningStore;
   openAiFiles: OpenAiFileStore;
   openAiVideos: OpenAiVideoStore;
   openAiUploads: OpenAiUploadStore;
@@ -133,6 +135,7 @@ export async function routeRequest(
       auth: options.openAiAuth,
       models: options.openAiModels,
       batches: options.openAiBatches,
+      fineTuning: options.openAiFineTuning,
       files: options.openAiFiles,
       videos: options.openAiVideos,
       uploads: options.openAiUploads,

@@ -7,6 +7,7 @@ import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./media/hand
 import { handleOpenAiChatCompletions } from "./chat/handle-chat-completions.js";
 import { handleOpenAiCompletions } from "./completions/handle-completions.js";
 import { handleOpenAiEmbeddings } from "./embeddings/handle-embeddings.js";
+import { routeOpenAiFineTuning } from "./fine-tuning/handle-fine-tuning.js";
 import { routeOpenAiFiles } from "./files/handle-files.js";
 import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./media/handle-images.js";
 import { handleOpenAiModels } from "./models/handle-models.js";
@@ -16,6 +17,7 @@ import { routeOpenAiVideos } from "./media/handle-videos.js";
 import { routeOpenAiUploads } from "./uploads/handle-uploads.js";
 import { routeOpenAiVectorStores } from "./vector-stores/handle-vector-stores.js";
 import type { OpenAiModel } from "./models/model-catalog.js";
+import type { OpenAiFineTuningStore } from "./fine-tuning/fine-tuning-store.js";
 import type { OpenAiFileStore } from "./files/file-store.js";
 import type { OpenAiVideoStore } from "./media/video-store.js";
 import type { OpenAiUploadStore } from "./uploads/upload-store.js";
@@ -29,6 +31,7 @@ export type OpenAiRoutesOptions = {
   auth: OpenAiAuthOptions;
   models: readonly OpenAiModel[];
   batches: OpenAiBatchStore;
+  fineTuning: OpenAiFineTuningStore;
   files: OpenAiFileStore;
   videos: OpenAiVideoStore;
   uploads: OpenAiUploadStore;
@@ -186,6 +189,29 @@ export async function routeOpenAiRequest(params: {
         stream: false,
         matchedScriptStep: null,
         responseType: "file",
+        finalText: null,
+        toolCallsEmitted: 0
+      })
+    };
+  }
+
+  if (isOpenAiFineTuningPath(path, options.providers)) {
+    const result = await routeOpenAiFineTuning({
+      req,
+      res,
+      path,
+      providers: options.providers,
+      requestId,
+      receivedAtEpochMs,
+      fineTuning: options.fineTuning
+    });
+    return {
+      handled: true,
+      journal: routeResultJournal("fine_tuning.jobs", {
+        ...result,
+        stream: false,
+        matchedScriptStep: null,
+        responseType: "fine_tuning.job",
         finalText: null,
         toolCallsEmitted: 0
       })
@@ -434,6 +460,10 @@ function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean
 
 function isOpenAiFilesPath(path: string, providers: readonly string[]): boolean {
   return matchesOpenAiPath({ path, providers, exact: ["files"], prefix: ["files/"] });
+}
+
+function isOpenAiFineTuningPath(path: string, providers: readonly string[]): boolean {
+  return matchesOpenAiPath({ path, providers, exact: ["fine_tuning/jobs"], prefix: ["fine_tuning/jobs/"] });
 }
 
 function isOpenAiUploadsPath(path: string, providers: readonly string[]): boolean {
