@@ -113,6 +113,7 @@ async function main() {
   }
 
   if (needChecks) {
+    await runStep("Installing dependencies", "pnpm", ["install", "--frozen-lockfile"]);
     await runStep("Running package verification", "pnpm", ["run", "package:check", "--", "--allow-dirty"]);
   }
 
