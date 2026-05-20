@@ -47,6 +47,20 @@ export function writeNoContent(
   res.end();
 }
 
+export function writeBinary(
+  res: ServerResponse,
+  statusCode: number,
+  body: Buffer,
+  headers: Record<string, string> = {}
+): void {
+  res.writeHead(statusCode, {
+    ...corsHeaders(),
+    "content-length": String(body.length),
+    ...headers
+  });
+  res.end(body);
+}
+
 export function corsHeaders(): Record<string, string> {
   return {
     "access-control-allow-origin": "*",
