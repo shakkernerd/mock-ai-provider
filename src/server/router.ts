@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "../providers/openai/auth.js";
 import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js";
+import { handleOpenAiImageGeneration } from "../providers/openai/handle-images.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiResponses } from "../providers/openai/handle-responses.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
@@ -128,6 +129,35 @@ export async function routeRequest(
     return;
   }
 
+  if (req.method === "POST" && isOpenAiImageGenerationPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
+    const result = await handleOpenAiImageGeneration({
+      req,
+      res,
+      requestId,
+      receivedAtEpochMs: received.epochMs
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: "images.generations",
+      model: result.model,
+      stream: false,
+      status: result.status,
+      matchedScriptStep: null,
+      responseType: "image",
+      toolCallsEmitted: 0,
+      finalTextEmitted: null,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {})
+    });
+    return;
+  }
+
   if (req.method === "POST" && isOpenAiResponsesPath(path, options.providers)) {
     if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
       return;
@@ -219,6 +249,13 @@ function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boo
     return providers.includes("openai");
   }
   return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiImageGenerationPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/images/generations") {
+    return providers.includes("openai");
+  }
+  return path === "/v1/images/generations" && providers.length === 1 && providers[0] === "openai";
 }
 
 function isOpenAiResponsesPath(path: string, providers: readonly string[]): boolean {

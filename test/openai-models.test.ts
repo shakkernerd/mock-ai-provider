@@ -77,6 +77,11 @@ describe("OpenAI Models mock", () => {
           id: "gpt-5.4-mini",
           object: "model",
           owned_by: "openai"
+        }),
+        expect.objectContaining({
+          id: "gpt-image-2",
+          object: "model",
+          owned_by: "openai"
         })
       ]));
     }

@@ -41,6 +41,7 @@ const DEFAULT_MODEL_IDS = [
   "gpt-realtime-1.5",
   "gpt-realtime",
   "gpt-realtime-mini",
+  "gpt-image-2",
   "gpt-image-1.5",
   "gpt-image-1",
   "gpt-image-1-mini",
