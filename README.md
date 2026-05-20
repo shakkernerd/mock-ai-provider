@@ -98,6 +98,19 @@ mock-ai-provider serve \
   --request-log .mock-ai-provider/requests.jsonl
 ```
 
+On startup, stdout prints one JSON object. Scripts can parse this to discover the
+actual bound port when using `--port 0`:
+
+```json
+{
+  "ok": true,
+  "host": "127.0.0.1",
+  "port": 31337,
+  "baseUrl": "http://127.0.0.1:31337",
+  "requestLog": ".mock-ai-provider/requests.jsonl"
+}
+```
+
 Options:
 
 - `--providers openai`: enabled provider protocols.
@@ -107,6 +120,7 @@ Options:
 - `--request-log <path>`: JSONL request journal path.
 - `--strict-auth`: require bearer auth.
 - `--api-key <key>`: accepted bearer token when strict auth is enabled.
+- `--version`: print the package version.
 
 ## Script Example
 

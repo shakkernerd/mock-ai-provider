@@ -1,10 +1,15 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { createMockAiProviderServer } from "./server/create-server.js";
 import { installShutdownHandlers, listen } from "./server/listen.js";
 
 async function main(argv: string[]): Promise<void> {
   const command = argv[0];
+  if (command === "--version" || command === "-v") {
+    process.stdout.write(`${readPackageVersion()}\n`);
+    return;
+  }
   if (command !== "serve") {
     printUsage();
     process.exitCode = command ? 1 : 0;
@@ -104,8 +109,14 @@ function printUsage(): void {
   process.stdout.write([
     "Usage:",
     "  mock-ai-provider serve --providers openai [--script <path>] [--models <path>] [--port <number|0>] [--request-log <path>] [--strict-auth] [--api-key <key>]",
+    "  mock-ai-provider --version",
     ""
   ].join("\n"));
+}
+
+function readPackageVersion(): string {
+  const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version?: unknown };
+  return typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
 }
 
 main(process.argv.slice(2)).catch((error: unknown) => {
