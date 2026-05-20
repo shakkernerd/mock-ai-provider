@@ -73,9 +73,28 @@ export async function routeRequest(
     writeJson(res, 200, {
       ok: true,
       providers: options.providers,
-      scriptId: options.runtime.script.id
+      scriptId: options.runtime.script.id,
+      requestCount: options.journal.count()
     }, { "x-request-id": requestId });
     appendJournal(emptyJournalFields({ status: 200 }));
+    return;
+  }
+
+  if (req.method === "GET" && path === "/admin/requests") {
+    const limit = readPositiveIntegerQuery(req, "limit");
+    writeJson(res, 200, {
+      object: "list",
+      data: options.journal.list(limit ? { limit } : {})
+    }, { "x-request-id": requestId });
+    return;
+  }
+
+  if (req.method === "POST" && path === "/admin/reset") {
+    options.journal.reset();
+    writeJson(res, 200, {
+      ok: true,
+      requestCount: 0
+    }, { "x-request-id": requestId });
     return;
   }
 
@@ -436,6 +455,15 @@ function readOpenAiVideoId(path: string): string | undefined {
   }
   const raw = path.slice(prefix.length).replace(/\/content$/, "");
   return raw.length > 0 ? decodeURIComponent(raw) : undefined;
+}
+
+function readPositiveIntegerQuery(req: IncomingMessage, name: string): number | undefined {
+  const raw = new URL(req.url ?? "/", "http://mock-ai-provider.local").searchParams.get(name);
+  if (!raw) {
+    return undefined;
+  }
+  const value = Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
 function authorizeOpenAiRequest(params: {

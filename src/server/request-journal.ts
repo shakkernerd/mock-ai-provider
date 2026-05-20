@@ -1,4 +1,4 @@
-import { mkdirSync, appendFileSync } from "node:fs";
+import { mkdirSync, appendFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 export type RequestJournalEntry = {
@@ -31,13 +31,32 @@ export type RequestJournalEntry = {
 
 export type RequestJournal = {
   append(entry: RequestJournalEntry): void;
+  list(options?: { limit?: number }): readonly RequestJournalEntry[];
+  reset(): void;
+  count(): number;
 };
 
 export function createRequestJournal(path: string): RequestJournal {
   mkdirSync(dirname(path), { recursive: true });
+  const entries: RequestJournalEntry[] = [];
   return {
     append(entry) {
+      entries.push(entry);
       appendFileSync(path, `${JSON.stringify(entry)}\n`, "utf8");
+    },
+    list(options = {}) {
+      const limit = options.limit;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit <= 0) {
+        return entries;
+      }
+      return entries.slice(-limit);
+    },
+    reset() {
+      entries.length = 0;
+      writeFileSync(path, "", "utf8");
+    },
+    count() {
+      return entries.length;
     }
   };
 }

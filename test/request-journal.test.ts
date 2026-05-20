@@ -41,5 +41,11 @@ describe("request journal", () => {
       requestId: "req_test",
       clientRequestId: "client-test"
     });
+    expect(journal.count()).toBe(1);
+    expect(journal.list()).toHaveLength(1);
+    journal.reset();
+    expect(journal.count()).toBe(0);
+    expect(journal.list()).toHaveLength(0);
+    expect(await readFile(path, "utf8")).toBe("");
   });
 });
