@@ -3,6 +3,7 @@ export type MultipartFile = {
   filename: string | null;
   contentType: string | null;
   byteLength: number;
+  content?: Buffer;
 };
 
 export type MultipartForm = {
@@ -10,7 +11,11 @@ export type MultipartForm = {
   files: Record<string, MultipartFile>;
 };
 
-export function parseMultipartForm(contentType: string | undefined, body: Buffer): MultipartForm {
+export function parseMultipartForm(
+  contentType: string | undefined,
+  body: Buffer,
+  options: { includeFileContents?: boolean } = {}
+): MultipartForm {
   const boundary = readBoundary(contentType);
   const fields: Record<string, string> = {};
   const files: Record<string, MultipartFile> = {};
@@ -39,7 +44,8 @@ export function parseMultipartForm(contentType: string | undefined, body: Buffer
         name,
         filename,
         contentType: partContentType,
-        byteLength: content.length
+        byteLength: content.length,
+        ...(options.includeFileContents ? { content } : {})
       };
     } else {
       fields[name] = content.toString("utf8");

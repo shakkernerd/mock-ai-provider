@@ -3,6 +3,13 @@ import { enforceOpenAiAuth, type OpenAiAuthOptions } from "./auth.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./handle-audio.js";
 import { handleOpenAiChatCompletions } from "./handle-chat-completions.js";
 import { handleOpenAiEmbeddings } from "./handle-embeddings.js";
+import {
+  handleOpenAiDeleteFile,
+  handleOpenAiFileContent,
+  handleOpenAiListFiles,
+  handleOpenAiRetrieveFile,
+  handleOpenAiUploadFile
+} from "./handle-files.js";
 import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./handle-images.js";
 import { handleOpenAiModels } from "./handle-models.js";
 import { handleOpenAiResponses } from "./handle-responses.js";
@@ -15,6 +22,7 @@ import {
   type OpenAiVideosRouteResult
 } from "./handle-videos.js";
 import type { OpenAiModel } from "./model-catalog.js";
+import type { OpenAiFileStore } from "./file-store.js";
 import type { OpenAiVideoStore } from "./video-store.js";
 import type { RequestJournalEntry } from "../../server/request-journal.js";
 import type { ScriptRuntime } from "../../scripts/types.js";
@@ -24,6 +32,7 @@ export type OpenAiRoutesOptions = {
   runtime: ScriptRuntime;
   auth: OpenAiAuthOptions;
   models: readonly OpenAiModel[];
+  files: OpenAiFileStore;
   videos: OpenAiVideoStore;
 };
 
@@ -108,6 +117,28 @@ export async function routeOpenAiRequest(params: {
         stream: false,
         matchedScriptStep: null,
         responseType: "image",
+        finalText: null,
+        toolCallsEmitted: 0
+      })
+    };
+  }
+
+  if (isOpenAiFilesPath(path, options.providers)) {
+    const result = await handleOpenAiFileRoute({
+      req,
+      res,
+      path,
+      requestId,
+      receivedAtEpochMs,
+      files: options.files
+    });
+    return {
+      handled: true,
+      journal: routeResultJournal("files", {
+        ...result,
+        stream: false,
+        matchedScriptStep: null,
+        responseType: "file",
         finalText: null,
         toolCallsEmitted: 0
       })
@@ -335,6 +366,43 @@ function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean
   return false;
 }
 
+function isOpenAiFilesPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/files" || path.startsWith("/openai/v1/files/")) {
+    return providers.includes("openai");
+  }
+  if (path === "/v1/files" || path.startsWith("/v1/files/")) {
+    return providers.length === 1 && providers[0] === "openai";
+  }
+  return false;
+}
+
+async function handleOpenAiFileRoute(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  files: OpenAiFileStore;
+}) {
+  if (params.req.method === "POST" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
+    return handleOpenAiUploadFile(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/files" || params.path === "/openai/v1/files")) {
+    return handleOpenAiListFiles(params);
+  }
+  const fileId = readOpenAiFileId(params.path);
+  if (params.req.method === "GET" && fileId && params.path.endsWith("/content")) {
+    return handleOpenAiFileContent({ ...params, fileId });
+  }
+  if (params.req.method === "DELETE" && fileId) {
+    return handleOpenAiDeleteFile({ ...params, fileId });
+  }
+  if (params.req.method === "GET" && fileId) {
+    return handleOpenAiRetrieveFile({ ...params, fileId });
+  }
+  return handleOpenAiRetrieveFile({ ...params, fileId: "" });
+}
+
 async function handleOpenAiVideoRoute(params: {
   req: IncomingMessage;
   res: ServerResponse;
@@ -373,6 +441,15 @@ function readOpenAiModelId(path: string): string | undefined {
 
 function readOpenAiVideoId(path: string): string | undefined {
   const prefix = path.startsWith("/openai/") ? "/openai/v1/videos/" : "/v1/videos/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/content$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
+}
+
+function readOpenAiFileId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/files/" : "/v1/files/";
   if (!path.startsWith(prefix)) {
     return undefined;
   }

@@ -27,3 +27,7 @@ export function createEventId(): string {
 export function createVideoId(): string {
   return `video_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createFileId(): string {
+  return `file-${randomUUID().replaceAll("-", "")}`;
+}
