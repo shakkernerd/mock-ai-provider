@@ -62,6 +62,21 @@ describe("OpenAI Models mock", () => {
           id: "gpt-5.2",
           object: "model",
           owned_by: "openai"
+        }),
+        expect.objectContaining({
+          id: "gpt-5.5",
+          object: "model",
+          owned_by: "openai"
+        }),
+        expect.objectContaining({
+          id: "gpt-5.5-pro",
+          object: "model",
+          owned_by: "openai"
+        }),
+        expect.objectContaining({
+          id: "gpt-5.4-mini",
+          object: "model",
+          owned_by: "openai"
         })
       ]));
     }
@@ -78,7 +93,7 @@ describe("OpenAI Models mock", () => {
   });
 
   it("retrieves an individual model", async () => {
-    const response = await fetch(`${baseUrl}/v1/models/gpt-5.2`);
+    const response = await fetch(`${baseUrl}/v1/models/gpt-5.5`);
 
     expect(response.status).toBe(200);
     const body = await response.json() as {
@@ -88,18 +103,18 @@ describe("OpenAI Models mock", () => {
       owned_by: string;
     };
     expect(body).toEqual({
-      id: "gpt-5.2",
+      id: "gpt-5.5",
       object: "model",
       created: expect.any(Number),
       owned_by: "openai"
     });
 
     const journal = await readJournal(requestLogPath);
-    expect(journal.find((entry) => entry.path === "/v1/models/gpt-5.2")).toMatchObject({
+    expect(journal.find((entry) => entry.path === "/v1/models/gpt-5.5")).toMatchObject({
       providerId: "openai",
       apiSurface: "models",
       status: 200,
-      model: "gpt-5.2"
+      model: "gpt-5.5"
     });
   });
 
