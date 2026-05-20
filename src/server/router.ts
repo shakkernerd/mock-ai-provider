@@ -73,7 +73,9 @@ export async function routeRequest(
       toolCallsEmitted: 0,
       finalTextEmitted: result.finalText,
       errorClass: result.errorClass,
-      bodyBytes: result.bodyBytes
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
     });
     return;
   }

@@ -64,7 +64,10 @@ describe("OpenAI Chat Completions mock", () => {
       },
       body: JSON.stringify({
         model: "gpt-mock",
-        messages: [{ role: "user", content: "Hello" }]
+        messages: [
+          { role: "system", content: "You are a strict assistant." },
+          { role: "user", content: "Hello" }
+        ]
       })
     });
 
@@ -90,6 +93,13 @@ describe("OpenAI Chat Completions mock", () => {
       clientRequestId: "client-request-1",
       responseType: "final-text",
       finalTextEmitted: "Hello from the mock provider."
+    });
+    expect(providerEntry?.requestBody).toMatchObject({
+      model: "gpt-mock",
+      messages: [
+        { role: "system", content: "You are a strict assistant." },
+        { role: "user", content: "Hello" }
+      ]
     });
   });
 

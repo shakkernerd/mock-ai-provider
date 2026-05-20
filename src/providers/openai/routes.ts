@@ -12,6 +12,8 @@ export type OpenAiRouteResult = {
   responseType: string | null;
   finalText: string | null;
   bodyBytes: number;
+  requestBody?: Record<string, unknown>;
+  requestBodyRaw?: string;
   errorClass: string | null;
 };
 
@@ -38,6 +40,7 @@ export async function handleOpenAiChatCompletions(params: {
       responseType: rendered.responseType,
       finalText: rendered.finalText,
       bodyBytes: Buffer.byteLength(bodyText),
+      requestBody,
       errorClass: null
     };
   } catch (error) {
@@ -59,6 +62,7 @@ export async function handleOpenAiChatCompletions(params: {
       responseType: null,
       finalText: null,
       bodyBytes: Buffer.byteLength(bodyText),
+      ...(bodyText ? { requestBodyRaw: bodyText } : {}),
       errorClass
     };
   }

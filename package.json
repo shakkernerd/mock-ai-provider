@@ -17,6 +17,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "serve": "pnpm run build && node dist/cli.js serve --providers openai",
     "test": "vitest run",
     "check": "pnpm run build && pnpm run test"
   },

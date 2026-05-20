@@ -23,6 +23,8 @@ export type RequestJournalEntry = {
   finalTextEmitted: string | null;
   errorClass: string | null;
   bodyBytes: number;
+  requestBody?: unknown;
+  requestBodyRaw?: string;
 };
 
 export type RequestJournal = {
