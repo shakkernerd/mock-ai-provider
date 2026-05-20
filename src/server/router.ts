@@ -61,7 +61,8 @@ export async function routeRequest(
       req,
       res,
       runtime: options.runtime,
-      requestId
+      requestId,
+      receivedAtEpochMs: received.epochMs
     });
     appendJournal({
       providerId: "openai",
@@ -86,6 +87,7 @@ export async function routeRequest(
     const result = handleOpenAiModels({
       res,
       requestId,
+      receivedAtEpochMs: received.epochMs,
       ...(modelId ? { modelId } : {})
     });
     appendJournal({

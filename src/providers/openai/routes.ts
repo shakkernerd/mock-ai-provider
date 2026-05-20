@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { openAiResponseHeaders } from "./headers.js";
 import { renderChatCompletion } from "./render-chat-completions.js";
 import { readRequestBody, writeJson } from "../../shared/http.js";
 import { parseJsonObject } from "../../shared/json.js";
@@ -22,6 +23,7 @@ export async function handleOpenAiChatCompletions(params: {
   res: ServerResponse;
   runtime: ScriptRuntime;
   requestId: string;
+  receivedAtEpochMs: number;
 }): Promise<OpenAiRouteResult> {
   let bodyText = "";
   try {
@@ -29,9 +31,10 @@ export async function handleOpenAiChatCompletions(params: {
     const requestBody = parseJsonObject(bodyText);
     const step = params.runtime.nextStep();
     const rendered = renderChatCompletion(requestBody, step);
-    writeJson(params.res, 200, rendered.body, {
-      "x-request-id": params.requestId
-    });
+    writeJson(params.res, 200, rendered.body, openAiResponseHeaders({
+      requestId: params.requestId,
+      receivedAtEpochMs: params.receivedAtEpochMs
+    }));
     return {
       status: 200,
       model: rendered.model,
@@ -51,9 +54,10 @@ export async function handleOpenAiChatCompletions(params: {
         message: error instanceof Error ? error.message : "request failed",
         type: errorClass
       }
-    }, {
-      "x-request-id": params.requestId
-    });
+    }, openAiResponseHeaders({
+      requestId: params.requestId,
+      receivedAtEpochMs: params.receivedAtEpochMs
+    }));
     return {
       status,
       model: null,

@@ -44,6 +44,9 @@ describe("OpenAI Models mock", () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get("x-request-id")).toMatch(/^req_/);
+      expect(response.headers.get("openai-processing-ms")).toMatch(/^\d+$/);
+      expect(response.headers.get("openai-version")).toBe("2020-10-01");
+      expect(response.headers.get("x-ratelimit-limit-tokens")).toBe("100000000");
       const body = await response.json() as {
         object: string;
         data: Array<{ id: string; object: string; owned_by: string }>;
@@ -104,6 +107,7 @@ describe("OpenAI Models mock", () => {
     const response = await fetch(`${baseUrl}/openai/v1/models/not-real`);
 
     expect(response.status).toBe(404);
+    expect(response.headers.get("openai-processing-ms")).toMatch(/^\d+$/);
     const body = await response.json() as {
       error: { type: string; code: string; param: string };
     };

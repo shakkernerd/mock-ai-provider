@@ -73,6 +73,10 @@ describe("OpenAI Chat Completions mock", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-request-id")).toMatch(/^req_/);
+    expect(response.headers.get("openai-processing-ms")).toMatch(/^\d+$/);
+    expect(response.headers.get("openai-version")).toBe("2020-10-01");
+    expect(response.headers.get("x-ratelimit-limit-requests")).toBe("1000000");
+    expect(response.headers.get("x-ratelimit-remaining-requests")).toBe("999999");
     const body = await response.json() as {
       object: string;
       choices: Array<{ message: { role: string; content: string } }>;
