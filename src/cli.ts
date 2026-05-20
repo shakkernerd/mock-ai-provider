@@ -46,8 +46,19 @@ async function main(argv: string[]): Promise<void> {
   process.stdout.write(`${JSON.stringify({
     ok: true,
     providers,
+    host: "127.0.0.1",
     port: boundPort,
-    baseUrl: `http://127.0.0.1:${boundPort}`
+    baseUrl: `http://127.0.0.1:${boundPort}`,
+    script: scriptPath
+      ? {
+          source: "file",
+          path: scriptPath
+        }
+      : {
+          source: "default",
+          description: "built-in default final text"
+        },
+    requestLog: requestLogPath
   })}\n`);
 }
 
