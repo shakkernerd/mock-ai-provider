@@ -10,18 +10,47 @@ npx mock-ai-provider serve --providers openai
 Provider values:
 
 ```text
-provider: openai-compatible or openai
-baseURL: http://127.0.0.1:31337/v1
+provider id: mockai
+api: openai-completions
+baseUrl: http://127.0.0.1:31337/v1
 apiKey: local-test-key
-model: gpt-5.5
+model ref: mockai/gpt-5.5
 ```
 
-The exact OpenClaw config key names depend on the OpenClaw runtime/config layer
-you are using. The important part is that OpenClaw should call the normal
-OpenAI-compatible HTTP API at:
+Example OpenClaw config patch:
 
-```text
-http://127.0.0.1:31337/v1
+```json5
+{
+  models: {
+    providers: {
+      mockai: {
+        baseUrl: "http://127.0.0.1:31337/v1",
+        apiKey: "local-test-key",
+        api: "openai-completions",
+        request: { allowPrivateNetwork: true },
+        models: [
+          {
+            id: "gpt-5.5",
+            name: "Mock GPT-5.5",
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 128000,
+            maxTokens: 8192
+          }
+        ]
+      }
+    }
+  },
+  agents: {
+    defaults: {
+      model: { primary: "mockai/gpt-5.5" },
+      models: {
+        "mockai/gpt-5.5": {}
+      }
+    }
+  }
+}
 ```
 
 Expected behavior:
