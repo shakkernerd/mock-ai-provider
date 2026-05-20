@@ -10,6 +10,7 @@ const publish = args.has("--publish");
 const dryRun = args.has("--dry-run");
 const allowDirty = args.has("--allow-dirty");
 const skipPublishDryRun = args.has("--skip-publish-dry-run");
+const skipVersionCheck = args.has("--skip-version-check");
 const tag = readArg("--tag") ?? "latest";
 const otp = readArg("--otp");
 
@@ -49,9 +50,14 @@ async function main() {
     throw new Error("package.json must include name and version");
   }
 
-  log(`release check for ${packageName}@${version}`);
+  const checkLabel = skipVersionCheck && !publish && !dryRun ? "package check" : "release check";
+  log(`${checkLabel} for ${packageName}@${version}`);
   await ensureCleanGitTree();
-  await ensureVersionNotPublished(packageName, version);
+  if (skipVersionCheck) {
+    log("npm version availability check skipped because --skip-version-check was provided");
+  } else {
+    await ensureVersionNotPublished(packageName, version);
+  }
   await run("pnpm", ["run", "check"]);
 
   const packDir = await mkdtemp(join(tmpdir(), "mock-ai-provider-release-"));
@@ -307,6 +313,7 @@ Options:
   --tag <tag>               npm dist-tag, defaults to latest
   --otp <code>              npm one-time password for interactive publish
   --allow-dirty             allow a dirty git tree, useful while testing this script
+  --skip-version-check      skip npm version availability check, useful for CI after release
   --skip-publish-dry-run    skip npm publish --dry-run when --dry-run is set
 `);
 }

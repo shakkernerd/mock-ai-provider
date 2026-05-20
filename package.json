@@ -27,6 +27,7 @@
   ],
   "license": "MIT",
   "author": "Shakker",
+  "packageManager": "pnpm@10.29.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/shakkernerd/mock-ai-provider.git"
@@ -54,6 +55,7 @@
     "serve": "pnpm run build && node dist/cli.js serve --providers openai",
     "test": "vitest run",
     "check": "pnpm run build && pnpm run test",
+    "package:check": "node scripts/release.mjs --skip-version-check",
     "release:check": "node scripts/release.mjs",
     "release:dry-run": "node scripts/release.mjs --dry-run",
     "release:publish": "node scripts/release.mjs --publish"
