@@ -1,0 +1,80 @@
+#!/usr/bin/env node
+import { parseArgs } from "node:util";
+import { createMockAiProviderServer } from "./server/create-server.js";
+
+async function main(argv: string[]): Promise<void> {
+  const command = argv[0];
+  if (command !== "serve") {
+    printUsage();
+    process.exitCode = command ? 1 : 0;
+    return;
+  }
+
+  const { values } = parseArgs({
+    args: argv.slice(1),
+    options: {
+      providers: { type: "string" },
+      script: { type: "string" },
+      port: { type: "string", default: "8787" },
+      "request-log": { type: "string" },
+      help: { type: "boolean", short: "h" }
+    },
+    allowPositionals: false
+  });
+
+  if (values.help) {
+    printUsage();
+    return;
+  }
+
+  const providers = requiredString(values.providers, "--providers").split(",");
+  const scriptPath = requiredString(values.script, "--script");
+  const requestLogPath = requiredString(values["request-log"], "--request-log");
+  const port = parsePort(requiredString(values.port, "--port"));
+  const server = await createMockAiProviderServer({
+    providers,
+    scriptPath,
+    requestLogPath
+  });
+
+  await new Promise<void>((resolve) => {
+    server.listen(port, "127.0.0.1", resolve);
+  });
+
+  const address = server.address();
+  const boundPort = typeof address === "object" && address ? address.port : port;
+  process.stdout.write(`${JSON.stringify({
+    ok: true,
+    providers,
+    port: boundPort,
+    baseUrl: `http://127.0.0.1:${boundPort}`
+  })}\n`);
+}
+
+function requiredString(value: unknown, name: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
+}
+
+function parsePort(value: string): number {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error("--port must be an integer from 0 to 65535");
+  }
+  return port;
+}
+
+function printUsage(): void {
+  process.stdout.write([
+    "Usage:",
+    "  mock-ai-provider serve --providers openai --script <path> --port <number|0> --request-log <path>",
+    ""
+  ].join("\n"));
+}
+
+main(process.argv.slice(2)).catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 1;
+});
