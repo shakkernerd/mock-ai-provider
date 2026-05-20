@@ -72,7 +72,7 @@ export async function routeRequest(
       status: result.status,
       matchedScriptStep: result.matchedScriptStep,
       responseType: result.responseType,
-      toolCallsEmitted: 0,
+      toolCallsEmitted: result.toolCallsEmitted,
       finalTextEmitted: result.finalText,
       errorClass: result.errorClass,
       bodyBytes: result.bodyBytes,

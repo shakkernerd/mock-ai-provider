@@ -3,7 +3,18 @@ export type FinalTextResponse = {
   text: string;
 };
 
-export type ScriptedResponse = FinalTextResponse;
+export type FunctionToolCall = {
+  id?: string;
+  name: string;
+  arguments: string;
+};
+
+export type ToolCallsResponse = {
+  type: "tool-calls";
+  toolCalls: FunctionToolCall[];
+};
+
+export type ScriptedResponse = FinalTextResponse | ToolCallsResponse;
 
 export type ScriptStep = {
   id?: string;

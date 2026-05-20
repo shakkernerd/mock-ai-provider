@@ -7,3 +7,7 @@ export function createRequestId(): string {
 export function createChatCompletionId(): string {
   return `chatcmpl_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createToolCallId(): string {
+  return `call_${randomUUID().replaceAll("-", "")}`;
+}

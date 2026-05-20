@@ -13,6 +13,7 @@ export type OpenAiRouteResult = {
   matchedScriptStep: string | null;
   responseType: string | null;
   finalText: string | null;
+  toolCallsEmitted: number;
   bodyBytes: number;
   requestBody?: Record<string, unknown>;
   requestBodyRaw?: string;
@@ -49,6 +50,7 @@ export async function handleOpenAiChatCompletions(params: {
         matchedScriptStep: step.id ?? null,
         responseType: rendered.responseType,
         finalText: rendered.finalText,
+        toolCallsEmitted: rendered.toolCallsEmitted,
         bodyBytes: Buffer.byteLength(bodyText),
         requestBody,
         errorClass: null
@@ -64,6 +66,7 @@ export async function handleOpenAiChatCompletions(params: {
       matchedScriptStep: step.id ?? null,
       responseType: rendered.responseType,
       finalText: rendered.finalText,
+      toolCallsEmitted: rendered.toolCallsEmitted,
       bodyBytes: Buffer.byteLength(bodyText),
       requestBody,
       errorClass: null
@@ -87,6 +90,7 @@ export async function handleOpenAiChatCompletions(params: {
       matchedScriptStep: null,
       responseType: null,
       finalText: null,
+      toolCallsEmitted: 0,
       bodyBytes: Buffer.byteLength(bodyText),
       ...(bodyText ? { requestBodyRaw: bodyText } : {}),
       errorClass
