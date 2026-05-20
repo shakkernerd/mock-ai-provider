@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
 import { createRequestId } from "../shared/ids.js";
@@ -82,6 +83,31 @@ export async function routeRequest(
     return;
   }
 
+  if (req.method === "POST" && isOpenAiEmbeddingsPath(path, options.providers)) {
+    const result = await handleOpenAiEmbeddings({
+      req,
+      res,
+      requestId,
+      receivedAtEpochMs: received.epochMs
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: "embeddings",
+      model: result.model,
+      stream: false,
+      status: result.status,
+      matchedScriptStep: null,
+      responseType: "embedding",
+      toolCallsEmitted: 0,
+      finalTextEmitted: null,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
+    });
+    return;
+  }
+
   if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
     const modelId = readOpenAiModelId(path);
     const result = handleOpenAiModels({
@@ -130,6 +156,13 @@ function isOpenAiModelsPath(path: string, providers: readonly string[]): boolean
     return providers.length === 1 && providers[0] === "openai";
   }
   return false;
+}
+
+function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/embeddings") {
+    return providers.includes("openai");
+  }
+  return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
 }
 
 function readOpenAiModelId(path: string): string | undefined {

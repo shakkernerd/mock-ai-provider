@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { writeChatCompletionStream } from "./render-chat-completion-stream.js";
 import { renderChatCompletion } from "./render-chat-completions.js";
@@ -96,22 +97,4 @@ export async function handleOpenAiChatCompletions(params: {
       errorClass
     };
   }
-}
-
-function readErrorStatus(error: unknown): number {
-  if (typeof error === "object" && error !== null && "statusCode" in error) {
-    const value = (error as { statusCode?: unknown }).statusCode;
-    if (typeof value === "number" && Number.isInteger(value)) {
-      return value;
-    }
-  }
-  return 400;
-}
-
-function readErrorType(error: unknown): string | null {
-  if (typeof error === "object" && error !== null && "errorType" in error) {
-    const value = (error as { errorType?: unknown }).errorType;
-    return typeof value === "string" ? value : null;
-  }
-  return null;
 }
