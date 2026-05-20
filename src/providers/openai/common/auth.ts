@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { openAiResponseHeaders } from "./headers.js";
-import { firstHeader, writeJson } from "../../shared/http.js";
+import { firstHeader, writeJson } from "../../../shared/http.js";
 
 export type OpenAiAuthOptions = {
   strict: boolean;

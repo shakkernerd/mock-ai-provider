@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { isRecord, parseJsonObject, readString } from "../../shared/json.js";
+import { isRecord, parseJsonObject, readString } from "../../../shared/json.js";
 
 export type OpenAiModel = {
   id: string;

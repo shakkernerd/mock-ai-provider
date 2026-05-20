@@ -1,4 +1,4 @@
-import { createBatchId } from "../../shared/ids.js";
+import { createBatchId } from "../../../shared/ids.js";
 
 export type OpenAiBatchObject = {
   id: string;

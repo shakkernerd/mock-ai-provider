@@ -32,5 +32,5 @@ export function normalizeAudioFormat(format: string): string {
 }
 
 function packageRoot(): string {
-  return resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+  return resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 }

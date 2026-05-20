@@ -1,4 +1,4 @@
-import { createVideoId } from "../../shared/ids.js";
+import { createVideoId } from "../../../shared/ids.js";
 
 export type OpenAiVideoJob = {
   id: string;

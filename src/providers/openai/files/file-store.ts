@@ -1,4 +1,4 @@
-import { createFileId } from "../../shared/ids.js";
+import { createFileId } from "../../../shared/ids.js";
 
 export type OpenAiFileObject = {
   id: string;

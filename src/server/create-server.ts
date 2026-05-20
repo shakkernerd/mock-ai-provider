@@ -2,15 +2,15 @@ import { createServer, type Server } from "node:http";
 import { createRequestJournal } from "./request-journal.js";
 import { createScriptRuntime, DEFAULT_SCRIPT, loadScript } from "./script-loader.js";
 import { routeRequest } from "./router.js";
-import type { OpenAiAuthOptions } from "../providers/openai/auth.js";
-import { createOpenAiBatchStore, type OpenAiBatchStore } from "../providers/openai/batch-store.js";
+import type { OpenAiAuthOptions } from "../providers/openai/common/auth.js";
+import { createOpenAiBatchStore, type OpenAiBatchStore } from "../providers/openai/batches/batch-store.js";
 import {
   DEFAULT_OPENAI_MODEL_CATALOG,
   loadOpenAiModelCatalog,
   type OpenAiModel
-} from "../providers/openai/model-catalog.js";
-import { createOpenAiFileStore, type OpenAiFileStore } from "../providers/openai/file-store.js";
-import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/video-store.js";
+} from "../providers/openai/models/model-catalog.js";
+import { createOpenAiFileStore, type OpenAiFileStore } from "../providers/openai/files/file-store.js";
+import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/media/video-store.js";
 import type { MockScript } from "../scripts/types.js";
 
 export type CreateServerOptions = {

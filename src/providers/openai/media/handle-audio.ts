@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
 import { renderSpeech } from "./render-audio.js";
-import { firstHeader, readRequestBody, readRequestBuffer, writeBinary, writeJson, writeText } from "../../shared/http.js";
-import { parseJsonObject } from "../../shared/json.js";
-import { parseMultipartForm } from "../../shared/multipart.js";
+import { firstHeader, readRequestBody, readRequestBuffer, writeBinary, writeJson, writeText } from "../../../shared/http.js";
+import { parseJsonObject } from "../../../shared/json.js";
+import { parseMultipartForm } from "../../../shared/multipart.js";
 
 export type OpenAiAudioRouteResult = {
   status: number;

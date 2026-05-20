@@ -1,11 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
-import { readDefaultVideo } from "./media-assets.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
+import { readDefaultVideo } from "./assets.js";
 import type { OpenAiVideoStore } from "./video-store.js";
-import { firstHeader, readRequestBuffer, writeBinary, writeJson } from "../../shared/http.js";
-import { parseJsonObject, readString } from "../../shared/json.js";
-import { parseMultipartForm } from "../../shared/multipart.js";
+import { firstHeader, readRequestBuffer, writeBinary, writeJson } from "../../../shared/http.js";
+import { parseJsonObject, readString } from "../../../shared/json.js";
+import { parseMultipartForm } from "../../../shared/multipart.js";
 
 export type OpenAiVideosRouteResult = {
   status: number;

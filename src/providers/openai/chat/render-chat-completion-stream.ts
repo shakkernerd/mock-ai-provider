@@ -1,9 +1,9 @@
 import type { ServerResponse } from "node:http";
-import { createChatCompletionId } from "../../shared/ids.js";
-import { readString, type JsonRecord } from "../../shared/json.js";
-import { corsHeaders } from "../../shared/http.js";
-import { writeSseDone, writeSseJson } from "../../shared/sse.js";
-import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
+import { createChatCompletionId } from "../../../shared/ids.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
+import { corsHeaders } from "../../../shared/http.js";
+import { writeSseDone, writeSseJson } from "../../../shared/sse.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../../scripts/types.js";
 import { renderFunctionToolCalls } from "./tool-calls.js";
 
 export type OpenAiChatStreamResult = {

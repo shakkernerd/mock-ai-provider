@@ -1,5 +1,5 @@
-import { readString, type JsonRecord } from "../../shared/json.js";
-import { normalizeAudioFormat, readDefaultAudio } from "./media-assets.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
+import { normalizeAudioFormat, readDefaultAudio } from "./assets.js";
 
 const SUPPORTED_SPEECH_FORMATS = new Set(["mp3", "opus", "aac", "flac", "wav", "pcm"]);
 

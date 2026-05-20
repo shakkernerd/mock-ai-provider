@@ -1,7 +1,7 @@
 import type { ServerResponse } from "node:http";
 import { openAiErrorBody } from "./errors.js";
-import type { RenderableScriptedResponse, ScriptStep, TerminalScriptedResponse } from "../../scripts/types.js";
-import { writeJson, writeText } from "../../shared/http.js";
+import type { RenderableScriptedResponse, ScriptStep, TerminalScriptedResponse } from "../../../scripts/types.js";
+import { writeJson, writeText } from "../../../shared/http.js";
 
 export type ScriptedTerminalResult = {
   status: number;

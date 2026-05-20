@@ -1,14 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
-import { renderResponse, renderResponseStreamEvents } from "./render-responses.js";
-import { isRenderableStep, isTerminalStep, resolveScriptStep, writeTerminalScriptResponse } from "./scripted-response.js";
-import { corsHeaders, readRequestBody, writeJson } from "../../shared/http.js";
-import { parseJsonObject, readString } from "../../shared/json.js";
-import { writeSseDone, writeSseJson } from "../../shared/sse.js";
-import type { ScriptRuntime } from "../../scripts/types.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
+import { writeChatCompletionStream } from "./render-chat-completion-stream.js";
+import { renderChatCompletion } from "./render-chat-completions.js";
+import { isRenderableStep, isTerminalStep, resolveScriptStep, writeTerminalScriptResponse } from "../common/scripted-response.js";
+import { readRequestBody, writeJson } from "../../../shared/http.js";
+import { parseJsonObject, readString } from "../../../shared/json.js";
+import type { ScriptRuntime } from "../../../scripts/types.js";
 
-export type OpenAiResponsesRouteResult = {
+export type OpenAiRouteResult = {
   status: number;
   model: string | null;
   stream: boolean | null;
@@ -24,19 +24,19 @@ export type OpenAiResponsesRouteResult = {
   errorClass: string | null;
 };
 
-export async function handleOpenAiResponses(params: {
+export async function handleOpenAiChatCompletions(params: {
   req: IncomingMessage;
   res: ServerResponse;
   runtime: ScriptRuntime;
   requestId: string;
   receivedAtEpochMs: number;
-}): Promise<OpenAiResponsesRouteResult> {
+}): Promise<OpenAiRouteResult> {
   let bodyText = "";
   try {
     bodyText = await readRequestBody(params.req);
     const requestBody = parseJsonObject(bodyText);
     const step = params.runtime.nextStep({
-      apiSurface: "responses",
+      apiSurface: "chat.completions",
       model: readString(requestBody, "model") ?? null,
       requestBody
     });
@@ -69,48 +69,40 @@ export async function handleOpenAiResponses(params: {
     if (!isRenderableStep(resolvedStep)) {
       throw new Error("script response did not resolve to a renderable response");
     }
-
     if (requestBody.stream === true) {
-      const rendered = renderResponseStreamEvents(requestBody, resolvedStep);
-      params.res.writeHead(200, {
-        ...corsHeaders(),
-        "content-type": "text/event-stream; charset=utf-8",
-        "cache-control": "no-cache",
-        "connection": "keep-alive",
-        ...headers
+      const rendered = writeChatCompletionStream({
+        res: params.res,
+        requestBody,
+        step: resolvedStep,
+        headers
       });
-      for (const event of rendered.events) {
-        writeSseJson(params.res, event);
-      }
-      writeSseDone(params.res);
-      params.res.end();
       return {
         status: 200,
-        model: rendered.result.model,
-        stream: true,
+        model: rendered.model,
+        stream: rendered.stream,
         matchedScriptStep: step.id ?? null,
-        responseType: rendered.result.responseType,
-        finalText: rendered.result.finalText,
-        toolCallsEmitted: rendered.result.toolCallsEmitted,
+        responseType: rendered.responseType,
+        finalText: rendered.finalText,
+        toolCallsEmitted: rendered.toolCallsEmitted,
         bodyBytes: Buffer.byteLength(bodyText),
         requestBody,
         responseSummary: {
           stream: true,
-          eventTypes: rendered.events.map((event) => event.type),
-          responseType: rendered.result.responseType,
-          finalText: rendered.result.finalText,
-          toolCallsEmitted: rendered.result.toolCallsEmitted
+          done: true,
+          responseType: rendered.responseType,
+          finalText: rendered.finalText,
+          toolCallsEmitted: rendered.toolCallsEmitted
         },
         errorClass: null
       };
     }
 
-    const rendered = renderResponse(requestBody, resolvedStep);
+    const rendered = renderChatCompletion(requestBody, resolvedStep);
     writeJson(params.res, 200, rendered.body, headers);
     return {
       status: 200,
       model: rendered.model,
-      stream: false,
+      stream: rendered.stream,
       matchedScriptStep: step.id ?? null,
       responseType: rendered.responseType,
       finalText: rendered.finalText,

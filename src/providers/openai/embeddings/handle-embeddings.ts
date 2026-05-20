@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
 import { renderEmbeddings } from "./render-embeddings.js";
-import { readRequestBody, writeJson } from "../../shared/http.js";
-import { parseJsonObject } from "../../shared/json.js";
+import { readRequestBody, writeJson } from "../../../shared/http.js";
+import { parseJsonObject } from "../../../shared/json.js";
 
 export type OpenAiEmbeddingsRouteResult = {
   status: number;

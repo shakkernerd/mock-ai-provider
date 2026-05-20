@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
 import type { OpenAiFileStore } from "./file-store.js";
-import { firstHeader, readRequestBuffer, writeBinary, writeJson } from "../../shared/http.js";
-import { parseMultipartForm } from "../../shared/multipart.js";
+import { firstHeader, readRequestBuffer, writeBinary, writeJson } from "../../../shared/http.js";
+import { parseMultipartForm } from "../../../shared/multipart.js";
 
 export type OpenAiFilesRouteResult = {
   status: number;

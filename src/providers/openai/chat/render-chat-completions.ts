@@ -1,6 +1,6 @@
-import { createChatCompletionId } from "../../shared/ids.js";
-import { readString, type JsonRecord } from "../../shared/json.js";
-import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
+import { createChatCompletionId } from "../../../shared/ids.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../../scripts/types.js";
 import { renderFunctionToolCalls } from "./tool-calls.js";
 
 export type OpenAiChatRenderResult = {

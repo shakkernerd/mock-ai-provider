@@ -1,5 +1,5 @@
-import { createToolCallId } from "../../shared/ids.js";
-import type { FunctionToolCall } from "../../scripts/types.js";
+import { createToolCallId } from "../../../shared/ids.js";
+import type { FunctionToolCall } from "../../../scripts/types.js";
 
 export type OpenAiFunctionToolCall = {
   id: string;

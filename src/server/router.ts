@@ -1,10 +1,10 @@
 import type { IncomingHttpHeaders, IncomingMessage, OutgoingHttpHeaders, ServerResponse } from "node:http";
-import type { OpenAiAuthOptions } from "../providers/openai/auth.js";
-import type { OpenAiBatchStore } from "../providers/openai/batch-store.js";
-import type { OpenAiFileStore } from "../providers/openai/file-store.js";
-import type { OpenAiModel } from "../providers/openai/model-catalog.js";
+import type { OpenAiAuthOptions } from "../providers/openai/common/auth.js";
+import type { OpenAiBatchStore } from "../providers/openai/batches/batch-store.js";
+import type { OpenAiFileStore } from "../providers/openai/files/file-store.js";
+import type { OpenAiModel } from "../providers/openai/models/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
-import type { OpenAiVideoStore } from "../providers/openai/video-store.js";
+import type { OpenAiVideoStore } from "../providers/openai/media/video-store.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, readRequestBody, requestPath, writeJson, writeNoContent } from "../shared/http.js";
 import { parseJsonObject } from "../shared/json.js";

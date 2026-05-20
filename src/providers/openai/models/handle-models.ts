@@ -1,7 +1,7 @@
 import type { ServerResponse } from "node:http";
-import { openAiResponseHeaders } from "./headers.js";
+import { openAiResponseHeaders } from "../common/headers.js";
 import { findOpenAiModel, type OpenAiModel } from "./model-catalog.js";
-import { writeJson } from "../../shared/http.js";
+import { writeJson } from "../../../shared/http.js";
 
 export type OpenAiModelsRouteResult = {
   status: number;

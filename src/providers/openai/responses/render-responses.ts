@@ -2,9 +2,9 @@ import {
   createResponseId,
   createResponseItemId,
   createToolCallId
-} from "../../shared/ids.js";
-import { readString, type JsonRecord } from "../../shared/json.js";
-import type { RenderableScriptedResponse, ScriptStep } from "../../scripts/types.js";
+} from "../../../shared/ids.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
+import type { RenderableScriptedResponse, ScriptStep } from "../../../scripts/types.js";
 
 export type OpenAiResponseRenderResult = {
   body: JsonRecord;

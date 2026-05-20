@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { OpenAiBatchStore } from "./batch-store.js";
-import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
-import { openAiResponseHeaders } from "./headers.js";
-import { readRequestBody, writeJson } from "../../shared/http.js";
-import { isRecord, parseJsonObject, readString } from "../../shared/json.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "../common/errors.js";
+import { openAiResponseHeaders } from "../common/headers.js";
+import { readRequestBody, writeJson } from "../../../shared/http.js";
+import { isRecord, parseJsonObject, readString } from "../../../shared/json.js";
 
 export type OpenAiBatchesRouteResult = {
   status: number;

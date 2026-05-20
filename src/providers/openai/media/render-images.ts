@@ -1,5 +1,5 @@
-import { readString, type JsonRecord } from "../../shared/json.js";
-import { readDefaultImage } from "./media-assets.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
+import { readDefaultImage } from "./assets.js";
 
 export type OpenAiImageRenderResult = {
   body: JsonRecord;

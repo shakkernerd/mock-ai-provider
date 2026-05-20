@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readString, type JsonRecord } from "../../shared/json.js";
+import { readString, type JsonRecord } from "../../../shared/json.js";
 
 export type OpenAiEmbeddingsRenderResult = {
   body: JsonRecord;
