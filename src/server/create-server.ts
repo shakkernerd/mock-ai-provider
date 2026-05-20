@@ -3,6 +3,7 @@ import { createRequestJournal } from "./request-journal.js";
 import { createScriptRuntime, DEFAULT_SCRIPT, loadScript } from "./script-loader.js";
 import { routeRequest } from "./router.js";
 import type { OpenAiAuthOptions } from "../providers/openai/auth.js";
+import { createOpenAiBatchStore, type OpenAiBatchStore } from "../providers/openai/batch-store.js";
 import {
   DEFAULT_OPENAI_MODEL_CATALOG,
   loadOpenAiModelCatalog,
@@ -20,6 +21,7 @@ export type CreateServerOptions = {
   openAiAuth?: OpenAiAuthOptions;
   openAiModels?: readonly OpenAiModel[];
   openAiModelsPath?: string;
+  openAiBatches?: OpenAiBatchStore;
   openAiFiles?: OpenAiFileStore;
   openAiVideos?: OpenAiVideoStore;
 };
@@ -31,6 +33,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
     ?? (options.openAiModelsPath ? await loadOpenAiModelCatalog(options.openAiModelsPath) : DEFAULT_OPENAI_MODEL_CATALOG);
   const runtime = createScriptRuntime(script);
   const journal = createRequestJournal(options.requestLogPath);
+  const openAiBatches = options.openAiBatches ?? createOpenAiBatchStore();
   const openAiFiles = options.openAiFiles ?? createOpenAiFileStore();
   const openAiVideos = options.openAiVideos ?? createOpenAiVideoStore();
 
@@ -41,6 +44,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
       journal,
       openAiAuth: options.openAiAuth ?? { strict: false },
       openAiModels,
+      openAiBatches,
       openAiFiles,
       openAiVideos
     }).catch((error: unknown) => {

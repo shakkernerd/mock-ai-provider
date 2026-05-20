@@ -31,3 +31,7 @@ export function createVideoId(): string {
 export function createFileId(): string {
   return `file-${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createBatchId(): string {
+  return `batch_${randomUUID().replaceAll("-", "")}`;
+}

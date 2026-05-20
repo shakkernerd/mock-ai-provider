@@ -1,5 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "./auth.js";
+import type { OpenAiBatchStore } from "./batch-store.js";
+import {
+  handleOpenAiCancelBatch,
+  handleOpenAiCreateBatch,
+  handleOpenAiListBatches,
+  handleOpenAiRetrieveBatch
+} from "./handle-batches.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./handle-audio.js";
 import { handleOpenAiChatCompletions } from "./handle-chat-completions.js";
 import { handleOpenAiEmbeddings } from "./handle-embeddings.js";
@@ -32,6 +39,7 @@ export type OpenAiRoutesOptions = {
   runtime: ScriptRuntime;
   auth: OpenAiAuthOptions;
   models: readonly OpenAiModel[];
+  batches: OpenAiBatchStore;
   files: OpenAiFileStore;
   videos: OpenAiVideoStore;
 };
@@ -94,6 +102,28 @@ export async function routeOpenAiRequest(params: {
         stream: false,
         matchedScriptStep: null,
         responseType: "embedding",
+        finalText: null,
+        toolCallsEmitted: 0
+      })
+    };
+  }
+
+  if (isOpenAiBatchesPath(path, options.providers)) {
+    const result = await handleOpenAiBatchRoute({
+      req,
+      res,
+      path,
+      requestId,
+      receivedAtEpochMs,
+      batches: options.batches
+    });
+    return {
+      handled: true,
+      journal: routeResultJournal("batches", {
+        ...result,
+        stream: false,
+        matchedScriptStep: null,
+        responseType: "batch",
         finalText: null,
         toolCallsEmitted: 0
       })
@@ -376,6 +406,40 @@ function isOpenAiFilesPath(path: string, providers: readonly string[]): boolean 
   return false;
 }
 
+function isOpenAiBatchesPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/batches" || path.startsWith("/openai/v1/batches/")) {
+    return providers.includes("openai");
+  }
+  if (path === "/v1/batches" || path.startsWith("/v1/batches/")) {
+    return providers.length === 1 && providers[0] === "openai";
+  }
+  return false;
+}
+
+async function handleOpenAiBatchRoute(params: {
+  req: IncomingMessage;
+  res: ServerResponse;
+  path: string;
+  requestId: string;
+  receivedAtEpochMs: number;
+  batches: OpenAiBatchStore;
+}) {
+  if (params.req.method === "POST" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
+    return handleOpenAiCreateBatch(params);
+  }
+  if (params.req.method === "GET" && (params.path === "/v1/batches" || params.path === "/openai/v1/batches")) {
+    return handleOpenAiListBatches(params);
+  }
+  const batchId = readOpenAiBatchId(params.path);
+  if (params.req.method === "POST" && batchId && params.path.endsWith("/cancel")) {
+    return handleOpenAiCancelBatch({ ...params, batchId });
+  }
+  if (params.req.method === "GET" && batchId) {
+    return handleOpenAiRetrieveBatch({ ...params, batchId });
+  }
+  return handleOpenAiRetrieveBatch({ ...params, batchId: "" });
+}
+
 async function handleOpenAiFileRoute(params: {
   req: IncomingMessage;
   res: ServerResponse;
@@ -454,6 +518,15 @@ function readOpenAiFileId(path: string): string | undefined {
     return undefined;
   }
   const raw = path.slice(prefix.length).replace(/\/content$/, "");
+  return raw.length > 0 ? decodeURIComponent(raw) : undefined;
+}
+
+function readOpenAiBatchId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/batches/" : "/v1/batches/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const raw = path.slice(prefix.length).replace(/\/cancel$/, "");
   return raw.length > 0 ? decodeURIComponent(raw) : undefined;
 }
 
