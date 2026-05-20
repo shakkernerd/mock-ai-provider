@@ -6,13 +6,8 @@ import { spawn } from "node:child_process";
 
 const root = resolve(new URL("..", import.meta.url).pathname);
 const args = new Set(process.argv.slice(2));
-const publish = args.has("--publish");
-const dryRun = args.has("--dry-run");
 const allowDirty = args.has("--allow-dirty");
-const skipPublishDryRun = args.has("--skip-publish-dry-run");
 const skipVersionCheck = args.has("--skip-version-check");
-const tag = readArg("--tag") ?? "latest";
-const otp = readArg("--otp");
 
 const requiredPackFiles = [
   "package.json",
@@ -50,8 +45,7 @@ async function main() {
     throw new Error("package.json must include name and version");
   }
 
-  const checkLabel = skipVersionCheck && !publish && !dryRun ? "package check" : "release check";
-  log(`${checkLabel} for ${packageName}@${version}`);
+  log(`package check for ${packageName}@${version}`);
   await ensureCleanGitTree();
   if (skipVersionCheck) {
     log("npm version availability check skipped because --skip-version-check was provided");
@@ -66,13 +60,7 @@ async function main() {
     inspectPack(pack);
     await smokeInstalledPackage(pack.filename, version);
 
-    if (publish) {
-      await publishPackage(pack.filename);
-    } else if (dryRun && !skipPublishDryRun) {
-      await publishDryRun(pack.filename);
-    } else {
-      log("publish skipped; pass --publish to publish or --dry-run to run npm publish --dry-run");
-    }
+    log("package check passed");
   } finally {
     await rm(packDir, { recursive: true, force: true });
   }
@@ -219,21 +207,6 @@ async function smokeServer(bin, cwd) {
   }
 }
 
-async function publishDryRun(tarball) {
-  await run("npm", ["publish", tarball, "--tag", tag, "--dry-run"]);
-  log("npm publish dry-run passed");
-}
-
-async function publishPackage(tarball) {
-  const publishArgs = ["publish", tarball, "--tag", tag];
-  if (otp) {
-    publishArgs.push("--otp", otp);
-  }
-  await run("npm", ["whoami"]);
-  await run("npm", publishArgs);
-  log(`published ${tarball} with tag ${tag}`);
-}
-
 async function waitForStartup(readStdout, readStderr) {
   const started = Date.now();
   while (Date.now() - started < 5000) {
@@ -291,29 +264,16 @@ async function run(command, commandArgs, options = {}) {
   return result;
 }
 
-function readArg(name) {
-  const raw = process.argv.slice(2);
-  const index = raw.indexOf(name);
-  return index >= 0 ? raw[index + 1] : undefined;
-}
-
 function log(message) {
-  console.log(`[release] ${message}`);
+  console.log(`[package-check] ${message}`);
 }
 
 function printHelp() {
   console.log(`Usage:
-  pnpm run release:check
-  pnpm run release:dry-run
-  pnpm run release:publish -- --otp <code>
+  pnpm run package:check
 
 Options:
-  --publish                 publish the packed tarball to npm
-  --dry-run                 run npm publish --dry-run after verification
-  --tag <tag>               npm dist-tag, defaults to latest
-  --otp <code>              npm one-time password for interactive publish
   --allow-dirty             allow a dirty git tree, useful while testing this script
   --skip-version-check      skip npm version availability check, useful for CI after release
-  --skip-publish-dry-run    skip npm publish --dry-run when --dry-run is set
 `);
 }
