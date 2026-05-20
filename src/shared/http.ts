@@ -27,11 +27,43 @@ export function writeJson(
 ): void {
   const payload = `${JSON.stringify(body)}\n`;
   res.writeHead(statusCode, {
+    ...corsHeaders(),
     "content-type": "application/json; charset=utf-8",
     "content-length": String(Buffer.byteLength(payload)),
     ...headers
   });
   res.end(payload);
+}
+
+export function writeNoContent(
+  res: ServerResponse,
+  statusCode: number,
+  headers: Record<string, string> = {}
+): void {
+  res.writeHead(statusCode, {
+    ...corsHeaders(),
+    ...headers
+  });
+  res.end();
+}
+
+export function corsHeaders(): Record<string, string> {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-headers": "authorization,content-type,x-client-request-id",
+    "access-control-expose-headers": [
+      "x-request-id",
+      "openai-processing-ms",
+      "openai-version",
+      "x-ratelimit-limit-requests",
+      "x-ratelimit-limit-tokens",
+      "x-ratelimit-remaining-requests",
+      "x-ratelimit-remaining-tokens",
+      "x-ratelimit-reset-requests",
+      "x-ratelimit-reset-tokens"
+    ].join(", ")
+  };
 }
 
 export function requestPath(req: IncomingMessage): string {

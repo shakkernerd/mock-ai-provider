@@ -4,7 +4,7 @@ import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
 import { createRequestId } from "../shared/ids.js";
-import { firstHeader, requestPath, writeJson } from "../shared/http.js";
+import { firstHeader, requestPath, writeJson, writeNoContent } from "../shared/http.js";
 import { durationMs, nowTimestamp } from "../shared/time.js";
 import type { RequestJournal, RequestJournalEntry } from "./request-journal.js";
 import type { ScriptRuntime } from "../scripts/types.js";
@@ -42,6 +42,12 @@ export async function routeRequest(
       ...partial
     });
   };
+
+  if (req.method === "OPTIONS") {
+    writeNoContent(res, 204, { "x-request-id": requestId });
+    appendJournal(emptyJournalFields({ status: 204 }));
+    return;
+  }
 
   if (req.method === "GET" && path === "/health") {
     writeJson(res, 200, { ok: true }, { "x-request-id": requestId });
