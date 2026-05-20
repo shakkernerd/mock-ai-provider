@@ -1,6 +1,6 @@
 {
   "name": "mock-ai-provider",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Provider-compatible mock servers for OpenAI, Anthropic, and other AI APIs.",
   "keywords": [
     "openai",
