@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "./common/auth.js";
+import { isOpenAiProviderPath, matchesOpenAiPath, readOpenAiPathSuffix } from "./common/paths.js";
 import type { OpenAiBatchStore } from "./batches/batch-store.js";
 import { routeOpenAiBatches } from "./batches/handle-batches.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./media/handle-audio.js";
@@ -55,7 +56,7 @@ export async function routeOpenAiRequest(params: {
   receivedAtEpochMs: number;
   options: OpenAiRoutesOptions;
 }): Promise<OpenAiRouteMatch> {
-  if (!isOpenAiPath(params.path, params.options.providers)) {
+  if (!isOpenAiProviderPath(params.path, params.options.providers)) {
     return { handled: false };
   }
 
@@ -323,65 +324,36 @@ function routeResultJournal(
   };
 }
 
-function isOpenAiPath(path: string, providers: readonly string[]): boolean {
-  if (path.startsWith("/openai/v1/")) {
-    return providers.includes("openai");
-  }
-  return path.startsWith("/v1/") && providers.length === 1 && providers[0] === "openai";
-}
-
 function isOpenAiChatCompletionsPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/chat/completions") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/chat/completions" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["chat/completions"] });
 }
 
 function isOpenAiCompletionsPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/completions") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/completions" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["completions"] });
 }
 
 function isOpenAiModelsPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/models" || path.startsWith("/openai/v1/models/")) {
-    return providers.includes("openai");
-  }
-  if (path === "/v1/models" || path.startsWith("/v1/models/")) {
-    return providers.length === 1 && providers[0] === "openai";
-  }
-  return false;
+  return matchesOpenAiPath({ path, providers, exact: ["models"], prefix: ["models/"] });
 }
 
 function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/embeddings") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["embeddings"] });
 }
 
 function isOpenAiModerationsPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/moderations") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/moderations" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["moderations"] });
 }
 
 function isOpenAiImagePath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/images/generations" || path === "/openai/v1/images/edits" || path === "/openai/v1/images/variations") {
-    return providers.includes("openai");
-  }
-  return (path === "/v1/images/generations" || path === "/v1/images/edits" || path === "/v1/images/variations")
-    && providers.length === 1
-    && providers[0] === "openai";
+  return matchesOpenAiPath({
+    path,
+    providers,
+    exact: ["images/generations", "images/edits", "images/variations"]
+  });
 }
 
 function isOpenAiSpeechPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/audio/speech") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/audio/speech" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["audio/speech"] });
 }
 
 function openAiImageSurface(path: string): string {
@@ -395,57 +367,32 @@ function openAiImageSurface(path: string): string {
 }
 
 function isOpenAiAudioTextPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/audio/transcriptions" || path === "/openai/v1/audio/translations") {
-    return providers.includes("openai");
-  }
-  return (path === "/v1/audio/transcriptions" || path === "/v1/audio/translations")
-    && providers.length === 1
-    && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["audio/transcriptions", "audio/translations"] });
 }
 
 function isOpenAiResponsesPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/responses") {
-    return providers.includes("openai");
-  }
-  return path === "/v1/responses" && providers.length === 1 && providers[0] === "openai";
+  return matchesOpenAiPath({ path, providers, exact: ["responses"] });
 }
 
 function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/videos" || path.startsWith("/openai/v1/videos/")) {
-    return providers.includes("openai");
-  }
-  if (path === "/v1/videos" || path.startsWith("/v1/videos/")) {
-    return providers.length === 1 && providers[0] === "openai";
-  }
-  return false;
+  return matchesOpenAiPath({ path, providers, exact: ["videos"], prefix: ["videos/"] });
 }
 
 function isOpenAiFilesPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/files" || path.startsWith("/openai/v1/files/")) {
-    return providers.includes("openai");
-  }
-  if (path === "/v1/files" || path.startsWith("/v1/files/")) {
-    return providers.length === 1 && providers[0] === "openai";
-  }
-  return false;
+  return matchesOpenAiPath({ path, providers, exact: ["files"], prefix: ["files/"] });
 }
 
 function isOpenAiBatchesPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/batches" || path.startsWith("/openai/v1/batches/")) {
-    return providers.includes("openai");
-  }
-  if (path === "/v1/batches" || path.startsWith("/v1/batches/")) {
-    return providers.length === 1 && providers[0] === "openai";
-  }
-  return false;
+  return matchesOpenAiPath({ path, providers, exact: ["batches"], prefix: ["batches/"] });
 }
 
 function readOpenAiModelId(path: string): string | undefined {
-  const prefix = path.startsWith("/openai/") ? "/openai/v1/models/" : "/v1/models/";
-  if (!path.startsWith(prefix)) {
+  const suffix = readOpenAiPathSuffix(path, ["openai"]);
+  const prefix = "models/";
+  if (!suffix?.startsWith(prefix)) {
     return undefined;
   }
-  const modelId = path.slice(prefix.length);
+  const modelId = suffix.slice(prefix.length);
   return modelId.length > 0 ? decodeURIComponent(modelId) : undefined;
 }
 
