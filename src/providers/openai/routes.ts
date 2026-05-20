@@ -18,6 +18,8 @@ export type OpenAiRouteResult = {
   bodyBytes: number;
   requestBody?: Record<string, unknown>;
   requestBodyRaw?: string;
+  responseBody?: unknown;
+  responseSummary?: unknown;
   errorClass: string | null;
 };
 
@@ -54,6 +56,13 @@ export async function handleOpenAiChatCompletions(params: {
         toolCallsEmitted: rendered.toolCallsEmitted,
         bodyBytes: Buffer.byteLength(bodyText),
         requestBody,
+        responseSummary: {
+          stream: true,
+          done: true,
+          responseType: rendered.responseType,
+          finalText: rendered.finalText,
+          toolCallsEmitted: rendered.toolCallsEmitted
+        },
         errorClass: null
       };
     }
@@ -70,17 +79,19 @@ export async function handleOpenAiChatCompletions(params: {
       toolCallsEmitted: rendered.toolCallsEmitted,
       bodyBytes: Buffer.byteLength(bodyText),
       requestBody,
+      responseBody: rendered.body,
       errorClass: null
     };
   } catch (error) {
     const status = readErrorStatus(error);
     const errorClass = readErrorType(error) ?? "invalid_request_error";
-    writeJson(params.res, status, {
+    const responseBody = {
       error: {
         message: error instanceof Error ? error.message : "request failed",
         type: errorClass
       }
-    }, openAiResponseHeaders({
+    };
+    writeJson(params.res, status, responseBody, openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
     }));
@@ -94,6 +105,7 @@ export async function handleOpenAiChatCompletions(params: {
       toolCallsEmitted: 0,
       bodyBytes: Buffer.byteLength(bodyText),
       ...(bodyText ? { requestBodyRaw: bodyText } : {}),
+      responseBody,
       errorClass
     };
   }

@@ -71,7 +71,14 @@ describe("OpenAI Embeddings mock", () => {
       model: "text-embedding-3-small",
       status: 200,
       responseType: "embedding",
-      requestBody: payload
+      requestBody: payload,
+      responseBody: {
+        object: "list",
+        data: [
+          { object: "embedding", index: 0 },
+          { object: "embedding", index: 1 }
+        ]
+      }
     });
   });
 

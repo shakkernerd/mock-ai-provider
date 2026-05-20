@@ -92,7 +92,9 @@ export async function routeRequest(
       errorClass: result.errorClass,
       bodyBytes: result.bodyBytes,
       ...(result.requestBody ? { requestBody: result.requestBody } : {}),
-      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {}),
+      ...(result.responseSummary ? { responseSummary: result.responseSummary } : {})
     });
     return;
   }
@@ -120,7 +122,8 @@ export async function routeRequest(
       errorClass: result.errorClass,
       bodyBytes: result.bodyBytes,
       ...(result.requestBody ? { requestBody: result.requestBody } : {}),
-      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {})
     });
     return;
   }
@@ -149,7 +152,9 @@ export async function routeRequest(
       errorClass: result.errorClass,
       bodyBytes: result.bodyBytes,
       ...(result.requestBody ? { requestBody: result.requestBody } : {}),
-      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {}),
+      ...(result.responseBody ? { responseBody: result.responseBody } : {}),
+      ...(result.responseSummary ? { responseSummary: result.responseSummary } : {})
     });
     return;
   }
@@ -177,7 +182,8 @@ export async function routeRequest(
       toolCallsEmitted: 0,
       finalTextEmitted: null,
       errorClass: result.errorClass,
-      bodyBytes: result.bodyBytes
+      bodyBytes: result.bodyBytes,
+      responseBody: result.responseBody
     });
     return;
   }

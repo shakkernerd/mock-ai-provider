@@ -88,7 +88,11 @@ describe("OpenAI Models mock", () => {
       apiSurface: "models",
       status: 200,
       model: null,
-      responseType: "model"
+      responseType: "model",
+      responseBody: {
+        object: "list",
+        data: expect.any(Array)
+      }
     });
   });
 

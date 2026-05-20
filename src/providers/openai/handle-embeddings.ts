@@ -11,6 +11,7 @@ export type OpenAiEmbeddingsRouteResult = {
   bodyBytes: number;
   requestBody?: Record<string, unknown>;
   requestBodyRaw?: string;
+  responseBody?: unknown;
   errorClass: string | null;
 };
 
@@ -34,17 +35,19 @@ export async function handleOpenAiEmbeddings(params: {
       model: rendered.model,
       bodyBytes: Buffer.byteLength(bodyText),
       requestBody,
+      responseBody: rendered.body,
       errorClass: null
     };
   } catch (error) {
     const status = readErrorStatus(error);
     const errorClass = readErrorType(error) ?? "invalid_request_error";
-    writeJson(params.res, status, {
+    const responseBody = {
       error: {
         message: error instanceof Error ? error.message : "request failed",
         type: errorClass
       }
-    }, openAiResponseHeaders({
+    };
+    writeJson(params.res, status, responseBody, openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
     }));
@@ -53,6 +56,7 @@ export async function handleOpenAiEmbeddings(params: {
       model: null,
       bodyBytes: Buffer.byteLength(bodyText),
       ...(bodyText ? { requestBodyRaw: bodyText } : {}),
+      responseBody,
       errorClass
     };
   }

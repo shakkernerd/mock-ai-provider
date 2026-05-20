@@ -105,6 +105,17 @@ describe("OpenAI Chat Completions mock", () => {
         { role: "user", content: "Hello" }
       ]
     });
+    expect(providerEntry?.responseBody).toMatchObject({
+      object: "chat.completion",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: "Hello from the mock provider."
+          }
+        }
+      ]
+    });
   });
 
   it("serves provider-prefixed OpenAI chat completions", async () => {
@@ -168,7 +179,12 @@ describe("OpenAI Chat Completions mock", () => {
       model: "gpt-mock",
       status: 200,
       responseType: "final-text",
-      finalTextEmitted: "Hello from the mock provider."
+      finalTextEmitted: "Hello from the mock provider.",
+      responseSummary: {
+        stream: true,
+        done: true,
+        finalText: "Hello from the mock provider."
+      }
     });
   });
 

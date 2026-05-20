@@ -25,6 +25,8 @@ export type RequestJournalEntry = {
   bodyBytes: number;
   requestBody?: unknown;
   requestBodyRaw?: string;
+  responseBody?: unknown;
+  responseSummary?: unknown;
 };
 
 export type RequestJournal = {

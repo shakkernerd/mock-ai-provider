@@ -98,7 +98,11 @@ describe("OpenAI Responses mock", () => {
       model: "gpt-5.5",
       status: 200,
       responseType: "final-text",
-      finalTextEmitted: "Hello from Responses."
+      finalTextEmitted: "Hello from Responses.",
+      responseBody: {
+        object: "response",
+        output_text: "Hello from Responses."
+      }
     });
   });
 
@@ -169,6 +173,18 @@ describe("OpenAI Responses mock", () => {
       response: {
         status: "completed",
         output_text: "Hello from Responses."
+      }
+    });
+
+    const journal = await readJournal(requestLogPath);
+    expect(journal.find((entry) => entry.path === "/v1/responses" && entry.stream === true)).toMatchObject({
+      responseSummary: {
+        stream: true,
+        eventTypes: expect.arrayContaining([
+          "response.created",
+          "response.output_text.delta",
+          "response.completed"
+        ])
       }
     });
   });

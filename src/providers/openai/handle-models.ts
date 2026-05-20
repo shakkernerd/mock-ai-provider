@@ -8,6 +8,7 @@ export type OpenAiModelsRouteResult = {
   model: string | null;
   bodyBytes: number;
   errorClass: string | null;
+  responseBody: unknown;
 };
 
 export function handleOpenAiModels(params: {
@@ -24,19 +25,23 @@ export function handleOpenAiModels(params: {
   if (params.modelId) {
     const model = findOpenAiModel(params.catalog, params.modelId);
     if (!model) {
-      writeJson(params.res, 404, {
+      const body = {
         error: {
           message: `The model '${params.modelId}' does not exist or you do not have access to it.`,
           type: "invalid_request_error",
           param: "model",
           code: "model_not_found"
         }
+      };
+      writeJson(params.res, 404, {
+        ...body
       }, headers);
       return {
         status: 404,
         model: params.modelId,
         bodyBytes: 0,
-        errorClass: "invalid_request_error"
+        errorClass: "invalid_request_error",
+        responseBody: body
       };
     }
 
@@ -45,18 +50,21 @@ export function handleOpenAiModels(params: {
       status: 200,
       model: model.id,
       bodyBytes: 0,
-      errorClass: null
+      errorClass: null,
+      responseBody: model
     };
   }
 
-  writeJson(params.res, 200, {
+  const body = {
     object: "list",
     data: params.catalog
-  }, headers);
+  };
+  writeJson(params.res, 200, body, headers);
   return {
     status: 200,
     model: null,
     bodyBytes: 0,
-    errorClass: null
+    errorClass: null,
+    responseBody: body
   };
 }
