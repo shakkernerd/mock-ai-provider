@@ -96,8 +96,36 @@ export function renderResponseStreamEvents(requestBody: JsonRecord, step: Script
   if (step.respond.type === "tool-calls") {
     const output = response.output as JsonRecord[];
     for (const [index, item] of output.entries()) {
+      const argumentsText = typeof item.arguments === "string" ? item.arguments : "{}";
       events.push({
         type: "response.output_item.added",
+        sequence_number: events.length,
+        output_index: index,
+        item: {
+          ...item,
+          arguments: ""
+        }
+      });
+      events.push({
+        type: "response.function_call_arguments.delta",
+        sequence_number: events.length,
+        response_id: response.id,
+        item_id: item.id,
+        output_index: index,
+        delta: argumentsText
+      });
+      events.push({
+        type: "response.function_call_arguments.done",
+        sequence_number: events.length,
+        response_id: response.id,
+        item_id: item.id,
+        output_index: index,
+        call_id: item.call_id,
+        name: item.name,
+        arguments: argumentsText
+      });
+      events.push({
+        type: "response.output_item.done",
         sequence_number: events.length,
         output_index: index,
         item

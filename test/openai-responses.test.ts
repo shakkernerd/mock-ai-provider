@@ -268,6 +268,57 @@ describe("OpenAI Responses mock", () => {
       }
     });
   });
+
+  it("streams Responses function call argument events", async () => {
+    await fetch(`${baseUrl}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        input: "Consume the first scripted response."
+      })
+    });
+
+    const response = await fetch(`${baseUrl}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        stream: true,
+        input: "Look up an order.",
+        tools: [{ type: "function", name: "lookup_order" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const text = await response.text();
+    const events = readSseEvents(text);
+    expect(events.find((event) => event.type === "response.output_item.added")).toMatchObject({
+      type: "response.output_item.added",
+      item: {
+        type: "function_call",
+        name: "lookup_order",
+        arguments: ""
+      }
+    });
+    expect(events.find((event) => event.type === "response.function_call_arguments.delta")).toMatchObject({
+      type: "response.function_call_arguments.delta",
+      delta: "{\"order_id\":\"123\"}"
+    });
+    expect(events.find((event) => event.type === "response.function_call_arguments.done")).toMatchObject({
+      type: "response.function_call_arguments.done",
+      name: "lookup_order",
+      arguments: "{\"order_id\":\"123\"}"
+    });
+    expect(events.find((event) => event.type === "response.output_item.done")).toMatchObject({
+      type: "response.output_item.done",
+      item: {
+        type: "function_call",
+        name: "lookup_order",
+        arguments: "{\"order_id\":\"123\"}"
+      }
+    });
+  });
 });
 
 async function readJournal(path: string): Promise<Array<Record<string, unknown>>> {
