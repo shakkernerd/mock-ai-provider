@@ -43,3 +43,7 @@ export function createModerationId(): string {
 export function createCompletionId(): string {
   return `cmpl-${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createVectorStoreId(): string {
+  return `vs_${randomUUID().replaceAll("-", "")}`;
+}

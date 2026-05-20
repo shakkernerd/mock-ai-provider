@@ -13,9 +13,11 @@ import { handleOpenAiModels } from "./models/handle-models.js";
 import { handleOpenAiModeration } from "./moderations/handle-moderations.js";
 import { handleOpenAiResponses } from "./responses/handle-responses.js";
 import { routeOpenAiVideos } from "./media/handle-videos.js";
+import { routeOpenAiVectorStores } from "./vector-stores/handle-vector-stores.js";
 import type { OpenAiModel } from "./models/model-catalog.js";
 import type { OpenAiFileStore } from "./files/file-store.js";
 import type { OpenAiVideoStore } from "./media/video-store.js";
+import type { OpenAiVectorStoreStore } from "./vector-stores/vector-store.js";
 import type { RequestJournalEntry } from "../../server/request-journal.js";
 import type { ScriptRuntime } from "../../scripts/types.js";
 
@@ -27,6 +29,7 @@ export type OpenAiRoutesOptions = {
   batches: OpenAiBatchStore;
   files: OpenAiFileStore;
   videos: OpenAiVideoStore;
+  vectorStores: OpenAiVectorStoreStore;
 };
 
 export type OpenAiRouteMatch = {
@@ -256,6 +259,29 @@ export async function routeOpenAiRequest(params: {
     };
   }
 
+  if (isOpenAiVectorStoresPath(path, options.providers)) {
+    const result = await routeOpenAiVectorStores({
+      req,
+      res,
+      path,
+      providers: options.providers,
+      requestId,
+      receivedAtEpochMs,
+      vectorStores: options.vectorStores
+    });
+    return {
+      handled: true,
+      journal: routeResultJournal("vector_stores", {
+        ...result,
+        stream: false,
+        matchedScriptStep: null,
+        responseType: "vector_store",
+        finalText: null,
+        toolCallsEmitted: 0
+      })
+    };
+  }
+
   if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
     const modelId = readOpenAiModelId(path);
     const result = handleOpenAiModels({
@@ -380,6 +406,10 @@ function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean
 
 function isOpenAiFilesPath(path: string, providers: readonly string[]): boolean {
   return matchesOpenAiPath({ path, providers, exact: ["files"], prefix: ["files/"] });
+}
+
+function isOpenAiVectorStoresPath(path: string, providers: readonly string[]): boolean {
+  return matchesOpenAiPath({ path, providers, exact: ["vector_stores"], prefix: ["vector_stores/"] });
 }
 
 function isOpenAiBatchesPath(path: string, providers: readonly string[]): boolean {
