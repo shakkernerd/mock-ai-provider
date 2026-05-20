@@ -3,7 +3,7 @@ import { enforceOpenAiAuth, type OpenAiAuthOptions } from "./auth.js";
 import { handleOpenAiAudioTranscription, handleOpenAiSpeech } from "./handle-audio.js";
 import { handleOpenAiChatCompletions } from "./handle-chat-completions.js";
 import { handleOpenAiEmbeddings } from "./handle-embeddings.js";
-import { handleOpenAiImageGeneration } from "./handle-images.js";
+import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./handle-images.js";
 import { handleOpenAiModels } from "./handle-models.js";
 import { handleOpenAiResponses } from "./handle-responses.js";
 import {
@@ -91,11 +91,19 @@ export async function routeOpenAiRequest(params: {
     };
   }
 
-  if (req.method === "POST" && isOpenAiImageGenerationPath(path, options.providers)) {
-    const result = await handleOpenAiImageGeneration({ req, res, requestId, receivedAtEpochMs });
+  if (req.method === "POST" && isOpenAiImagePath(path, options.providers)) {
+    const result = path.endsWith("/edits") || path.endsWith("/variations")
+      ? await handleOpenAiImageMultipart({
+          req,
+          res,
+          requestId,
+          receivedAtEpochMs,
+          kind: path.endsWith("/edits") ? "edit" : "variation"
+        })
+      : await handleOpenAiImageGeneration({ req, res, requestId, receivedAtEpochMs });
     return {
       handled: true,
-      journal: routeResultJournal("images.generations", {
+      journal: routeResultJournal(openAiImageSurface(path), {
         ...result,
         stream: false,
         matchedScriptStep: null,
@@ -275,11 +283,13 @@ function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boo
   return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
 }
 
-function isOpenAiImageGenerationPath(path: string, providers: readonly string[]): boolean {
-  if (path === "/openai/v1/images/generations") {
+function isOpenAiImagePath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/images/generations" || path === "/openai/v1/images/edits" || path === "/openai/v1/images/variations") {
     return providers.includes("openai");
   }
-  return path === "/v1/images/generations" && providers.length === 1 && providers[0] === "openai";
+  return (path === "/v1/images/generations" || path === "/v1/images/edits" || path === "/v1/images/variations")
+    && providers.length === 1
+    && providers[0] === "openai";
 }
 
 function isOpenAiSpeechPath(path: string, providers: readonly string[]): boolean {
@@ -287,6 +297,16 @@ function isOpenAiSpeechPath(path: string, providers: readonly string[]): boolean
     return providers.includes("openai");
   }
   return path === "/v1/audio/speech" && providers.length === 1 && providers[0] === "openai";
+}
+
+function openAiImageSurface(path: string): string {
+  if (path.endsWith("/edits")) {
+    return "images.edits";
+  }
+  if (path.endsWith("/variations")) {
+    return "images.variations";
+  }
+  return "images.generations";
 }
 
 function isOpenAiAudioTextPath(path: string, providers: readonly string[]): boolean {

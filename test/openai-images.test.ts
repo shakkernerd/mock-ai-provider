@@ -94,6 +94,47 @@ describe("OpenAI Images mock", () => {
     expect(body.data[0]?.url).toBe("http://mock-ai-provider.local/media/default-image.png");
   });
 
+  it("serves multipart image edits and variations", async () => {
+    const editForm = new FormData();
+    editForm.set("image", new Blob([Buffer.from("png")], { type: "image/png" }), "source.png");
+    editForm.set("prompt", "Put MIP in the image.");
+    editForm.set("response_format", "b64_json");
+
+    const editResponse = await fetch(`${baseUrl}/v1/images/edits`, {
+      method: "POST",
+      body: editForm
+    });
+    expect(editResponse.status).toBe(200);
+    const editBody = await editResponse.json() as { data: Array<{ b64_json: string; revised_prompt: string }> };
+    expect(Buffer.from(editBody.data[0]?.b64_json ?? "", "base64").subarray(1, 4).toString("ascii")).toBe("PNG");
+    expect(editBody.data[0]?.revised_prompt).toBe("Put MIP in the image.");
+
+    const variationForm = new FormData();
+    variationForm.set("image", new Blob([Buffer.from("png")], { type: "image/png" }), "source.png");
+    const variationResponse = await fetch(`${baseUrl}/openai/v1/images/variations`, {
+      method: "POST",
+      body: variationForm
+    });
+    expect(variationResponse.status).toBe(200);
+    const variationBody = await variationResponse.json() as { data: Array<{ url: string }> };
+    expect(variationBody.data[0]?.url).toBe("http://mock-ai-provider.local/media/default-image.png");
+
+    const journal = await readJournal(requestLogPath);
+    expect(journal.find((entry) => entry.path === "/v1/images/edits")).toMatchObject({
+      apiSurface: "images.edits",
+      requestBody: {
+        prompt: "Put MIP in the image.",
+        image: {
+          filename: "source.png",
+          contentType: "image/png"
+        }
+      }
+    });
+    expect(journal.find((entry) => entry.path === "/openai/v1/images/variations")).toMatchObject({
+      apiSurface: "images.variations"
+    });
+  });
+
   it("rejects missing prompts", async () => {
     const response = await fetch(`${baseUrl}/v1/images/generations`, {
       method: "POST",
