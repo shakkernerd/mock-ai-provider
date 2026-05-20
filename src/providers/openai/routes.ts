@@ -8,6 +8,7 @@ import { handleOpenAiEmbeddings } from "./embeddings/handle-embeddings.js";
 import { routeOpenAiFiles } from "./files/handle-files.js";
 import { handleOpenAiImageGeneration, handleOpenAiImageMultipart } from "./media/handle-images.js";
 import { handleOpenAiModels } from "./models/handle-models.js";
+import { handleOpenAiModeration } from "./moderations/handle-moderations.js";
 import { handleOpenAiResponses } from "./responses/handle-responses.js";
 import { routeOpenAiVideos } from "./media/handle-videos.js";
 import type { OpenAiModel } from "./models/model-catalog.js";
@@ -84,6 +85,21 @@ export async function routeOpenAiRequest(params: {
         stream: false,
         matchedScriptStep: null,
         responseType: "embedding",
+        finalText: null,
+        toolCallsEmitted: 0
+      })
+    };
+  }
+
+  if (req.method === "POST" && isOpenAiModerationsPath(path, options.providers)) {
+    const result = await handleOpenAiModeration({ req, res, requestId, receivedAtEpochMs });
+    return {
+      handled: true,
+      journal: routeResultJournal("moderations", {
+        ...result,
+        stream: false,
+        matchedScriptStep: null,
+        responseType: "moderation",
         finalText: null,
         toolCallsEmitted: 0
       })
@@ -324,6 +340,13 @@ function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boo
     return providers.includes("openai");
   }
   return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiModerationsPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/moderations") {
+    return providers.includes("openai");
+  }
+  return path === "/v1/moderations" && providers.length === 1 && providers[0] === "openai";
 }
 
 function isOpenAiImagePath(path: string, providers: readonly string[]): boolean {

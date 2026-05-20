@@ -35,3 +35,7 @@ export function createFileId(): string {
 export function createBatchId(): string {
   return `batch_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createModerationId(): string {
+  return `modr-${randomUUID().replaceAll("-", "")}`;
+}
