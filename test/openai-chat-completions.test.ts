@@ -223,6 +223,25 @@ describe("OpenAI Chat Completions mock", () => {
       });
     }
   });
+
+  it("returns OpenAI-shaped errors for invalid JSON", async () => {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{"
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json() as {
+      error: { message: string; type: string; param: string | null; code: string | null };
+    };
+    expect(body.error).toMatchObject({
+      type: "invalid_request_error",
+      param: null,
+      code: null
+    });
+    expect(body.error.message).toContain("JSON");
+  });
 });
 
 async function readJournal(path: string): Promise<Array<Record<string, unknown>>> {

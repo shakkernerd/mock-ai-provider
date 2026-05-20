@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { readErrorStatus, readErrorType } from "./errors.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { renderSpeech } from "./render-audio.js";
 import { firstHeader, readRequestBody, readRequestBuffer, writeBinary, writeJson, writeText } from "../../shared/http.js";
@@ -46,12 +46,7 @@ export async function handleOpenAiSpeech(params: {
   } catch (error) {
     const status = readErrorStatus(error);
     const errorClass = readErrorType(error) ?? "invalid_request_error";
-    const responseBody = {
-      error: {
-        message: error instanceof Error ? error.message : "request failed",
-        type: errorClass
-      }
-    };
+    const responseBody = openAiErrorBody(error);
     writeJson(params.res, status, responseBody, openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
@@ -124,12 +119,7 @@ export async function handleOpenAiAudioTranscription(params: {
   } catch (error) {
     const status = readErrorStatus(error);
     const errorClass = readErrorType(error) ?? "invalid_request_error";
-    const responseBody = {
-      error: {
-        message: error instanceof Error ? error.message : "request failed",
-        type: errorClass
-      }
-    };
+    const responseBody = openAiErrorBody(error);
     writeJson(params.res, status, responseBody, openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs

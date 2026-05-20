@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { readErrorStatus, readErrorType } from "./errors.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { readDefaultVideo } from "./media-assets.js";
 import type { OpenAiVideoStore } from "./video-store.js";
@@ -245,14 +245,7 @@ function writeVideoError(params: {
 }): OpenAiVideosRouteResult {
   const status = readErrorStatus(params.error);
   const errorClass = readErrorType(params.error) ?? "invalid_request_error";
-  const responseBody = {
-    error: {
-      message: params.error instanceof Error ? params.error.message : "request failed",
-      type: errorClass,
-      param: readErrorString(params.error, "param"),
-      code: readErrorString(params.error, "code")
-    }
-  };
+  const responseBody = openAiErrorBody(params.error);
   writeJson(params.res, status, responseBody, openAiResponseHeaders({
     requestId: params.requestId,
     receivedAtEpochMs: params.receivedAtEpochMs
@@ -264,12 +257,4 @@ function writeVideoError(params: {
     responseBody,
     errorClass
   };
-}
-
-function readErrorString(error: unknown, property: string): string | null {
-  if (typeof error !== "object" || error === null || !(property in error)) {
-    return null;
-  }
-  const value = (error as Record<string, unknown>)[property];
-  return typeof value === "string" ? value : null;
 }

@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { readErrorStatus, readErrorType } from "./errors.js";
+import { openAiErrorBody, readErrorStatus, readErrorType } from "./errors.js";
 import { openAiResponseHeaders } from "./headers.js";
 import { writeChatCompletionStream } from "./render-chat-completion-stream.js";
 import { renderChatCompletion } from "./render-chat-completions.js";
@@ -85,12 +85,7 @@ export async function handleOpenAiChatCompletions(params: {
   } catch (error) {
     const status = readErrorStatus(error);
     const errorClass = readErrorType(error) ?? "invalid_request_error";
-    const responseBody = {
-      error: {
-        message: error instanceof Error ? error.message : "request failed",
-        type: errorClass
-      }
-    };
+    const responseBody = openAiErrorBody(error);
     writeJson(params.res, status, responseBody, openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
