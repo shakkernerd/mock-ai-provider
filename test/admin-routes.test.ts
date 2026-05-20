@@ -61,4 +61,45 @@ describe("admin routes", () => {
     const afterResetResponse = await fetch(`${baseUrl}/admin/requests`);
     expect(await afterResetResponse.json()).toMatchObject({ object: "list", data: [] });
   });
+
+  it("replaces the active script", async () => {
+    const update = await fetch(`${baseUrl}/admin/script`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "replacement",
+        steps: [
+          {
+            id: "replacement-final",
+            respond: { type: "final-text", text: "replacement text" }
+          }
+        ]
+      })
+    });
+    expect(update.status).toBe(200);
+    expect(await update.json()).toMatchObject({ ok: true, scriptId: "replacement", steps: 1 });
+
+    const chat = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        messages: [{ role: "user", content: "hello" }]
+      })
+    });
+    expect(chat.status).toBe(200);
+    expect(await chat.json()).toMatchObject({
+      choices: [{ message: { content: "replacement text" } }]
+    });
+
+    const invalid = await fetch(`${baseUrl}/admin/script`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: "bad", steps: [] })
+    });
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toMatchObject({
+      error: { code: "invalid_script", param: "script" }
+    });
+  });
 });

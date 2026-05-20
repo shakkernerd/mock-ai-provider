@@ -4,8 +4,10 @@ import type { OpenAiModel } from "../providers/openai/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
 import type { OpenAiVideoStore } from "../providers/openai/video-store.js";
 import { createRequestId } from "../shared/ids.js";
-import { firstHeader, requestPath, writeJson, writeNoContent } from "../shared/http.js";
+import { firstHeader, readRequestBody, requestPath, writeJson, writeNoContent } from "../shared/http.js";
+import { parseJsonObject } from "../shared/json.js";
 import { durationMs, nowTimestamp } from "../shared/time.js";
+import { validateScript } from "../scripts/validate.js";
 import type { RequestJournal, RequestJournalEntry } from "./request-journal.js";
 import type { ScriptRuntime } from "../scripts/types.js";
 
@@ -83,6 +85,28 @@ export async function routeRequest(
       ok: true,
       requestCount: 0
     }, { "x-request-id": requestId });
+    return;
+  }
+
+  if (req.method === "POST" && path === "/admin/script") {
+    try {
+      const script = validateScript(parseJsonObject(await readRequestBody(req)));
+      options.runtime.replaceScript(script);
+      writeJson(res, 200, {
+        ok: true,
+        scriptId: script.id,
+        steps: script.steps.length
+      }, { "x-request-id": requestId });
+    } catch (error) {
+      writeJson(res, 400, {
+        error: {
+          message: error instanceof Error ? error.message : "invalid script",
+          type: "invalid_request_error",
+          param: "script",
+          code: "invalid_script"
+        }
+      }, { "x-request-id": requestId });
+    }
     return;
   }
 
