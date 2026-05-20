@@ -309,13 +309,14 @@ export async function routeOpenAiRequest(params: {
     };
   }
 
-  if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
+  if ((req.method === "GET" || req.method === "DELETE") && isOpenAiModelsPath(path, options.providers)) {
     const modelId = readOpenAiModelId(path);
     const result = handleOpenAiModels({
       res,
       requestId,
       receivedAtEpochMs,
       catalog: options.models,
+      method: req.method,
       ...(modelId ? { modelId } : {})
     });
     return {

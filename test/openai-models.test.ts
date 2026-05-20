@@ -127,6 +127,29 @@ describe("OpenAI Models mock", () => {
     });
   });
 
+  it("serves the model delete response shape", async () => {
+    const response = await fetch(`${baseUrl}/v1/models/gpt-5.5`, { method: "DELETE" });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      id: "gpt-5.5",
+      object: "model",
+      deleted: true
+    });
+
+    const journal = await readJournal(requestLogPath);
+    expect(journal.find((entry) => entry.path === "/v1/models/gpt-5.5" && entry.method === "DELETE")).toMatchObject({
+      providerId: "openai",
+      apiSurface: "models",
+      status: 200,
+      model: "gpt-5.5",
+      responseBody: {
+        id: "gpt-5.5",
+        deleted: true
+      }
+    });
+  });
+
   it("returns an OpenAI-style not-found error for unknown models", async () => {
     const response = await fetch(`${baseUrl}/openai/v1/models/not-real`);
 

@@ -17,6 +17,7 @@ export function handleOpenAiModels(params: {
   receivedAtEpochMs: number;
   catalog: readonly OpenAiModel[];
   modelId?: string;
+  method?: string;
 }): OpenAiModelsRouteResult {
   const headers = openAiResponseHeaders({
     requestId: params.requestId,
@@ -25,22 +26,21 @@ export function handleOpenAiModels(params: {
   if (params.modelId) {
     const model = findOpenAiModel(params.catalog, params.modelId);
     if (!model) {
+      return modelNotFound({ ...params, modelId: params.modelId, headers });
+    }
+
+    if (params.method === "DELETE") {
       const body = {
-        error: {
-          message: `The model '${params.modelId}' does not exist or you do not have access to it.`,
-          type: "invalid_request_error",
-          param: "model",
-          code: "model_not_found"
-        }
+        id: model.id,
+        object: "model",
+        deleted: true
       };
-      writeJson(params.res, 404, {
-        ...body
-      }, headers);
+      writeJson(params.res, 200, body, headers);
       return {
-        status: 404,
-        model: params.modelId,
+        status: 200,
+        model: model.id,
         bodyBytes: 0,
-        errorClass: "invalid_request_error",
+        errorClass: null,
         responseBody: body
       };
     }
@@ -65,6 +65,29 @@ export function handleOpenAiModels(params: {
     model: null,
     bodyBytes: 0,
     errorClass: null,
+    responseBody: body
+  };
+}
+
+function modelNotFound(params: {
+  res: ServerResponse;
+  modelId: string;
+  headers: Record<string, string>;
+}): OpenAiModelsRouteResult {
+  const body = {
+    error: {
+      message: `The model '${params.modelId}' does not exist or you do not have access to it.`,
+      type: "invalid_request_error",
+      param: "model",
+      code: "model_not_found"
+    }
+  };
+  writeJson(params.res, 404, body, params.headers);
+  return {
+    status: 404,
+    model: params.modelId,
+    bodyBytes: 0,
+    errorClass: "invalid_request_error",
     responseBody: body
   };
 }
