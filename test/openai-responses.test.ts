@@ -143,6 +143,66 @@ describe("OpenAI Responses mock", () => {
     });
   });
 
+  it("renders scripted tool-call arguments from request text", async () => {
+    const update = await fetch(`${baseUrl}/admin/script`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: "templated-tool-script",
+        steps: [
+          {
+            id: "send-media",
+            respond: {
+              type: "tool-calls",
+              toolCalls: [
+                {
+                  id: "call_send_media",
+                  name: "message",
+                  arguments: "{\"media\":\"{{request.text.match:MEDIA:(\\S+)}}\",\"message\":\"ready\"}"
+                }
+              ]
+            }
+          }
+        ]
+      })
+    });
+    expect(update.status).toBe(200);
+
+    const response = await fetch(`${baseUrl}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: "The generated file is MEDIA:/tmp/generated-image.png"
+              }
+            ]
+          }
+        ],
+        tools: [{ type: "function", name: "message" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json() as {
+      output: Array<{
+        type: string;
+        name: string;
+        arguments: string;
+      }>;
+    };
+    expect(body.output[0]).toMatchObject({
+      type: "function_call",
+      name: "message",
+      arguments: "{\"media\":\"/tmp/generated-image.png\",\"message\":\"ready\"}"
+    });
+  });
+
   it("stores Responses for retrieve, input items, cancel, and delete routes", async () => {
     const createResponse = await fetch(`${baseUrl}/v1/responses`, {
       method: "POST",

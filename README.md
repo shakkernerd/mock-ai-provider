@@ -111,6 +111,8 @@ Drive any request shape from a small JSON file. Steps run in order, or match by 
 
 Response types: `final-text`, `tool-calls`, `error`, `malformed`, `timeout`, `delay`. Reload at runtime by `POST`ing to `/admin/script`.
 
+Tool-call arguments and final text can reference request text with `{{request.text.match:<regex>}}`; the first capture group is inserted when present.
+
 ## Request Journal
 
 Every request is appended as one JSONL line: parsed body, headers, status, matched script step, emitted tool calls, and final text. API keys, bearer tokens, OAuth tokens, passwords, and private keys are redacted automatically. Binary uploads are summarized, not stored.

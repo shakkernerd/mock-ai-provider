@@ -56,7 +56,7 @@ export async function handleOpenAiResponses(params: {
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
     });
-    const resolvedStep = await resolveScriptStep(step);
+    const resolvedStep = await resolveScriptStep(step, { requestBody });
     if (isTerminalStep(resolvedStep)) {
       const terminal = writeTerminalScriptResponse({
         res: params.res,
