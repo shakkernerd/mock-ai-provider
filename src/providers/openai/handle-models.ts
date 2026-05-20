@@ -1,6 +1,6 @@
 import type { ServerResponse } from "node:http";
 import { openAiResponseHeaders } from "./headers.js";
-import { findOpenAiModel, OPENAI_MODEL_CATALOG } from "./model-catalog.js";
+import { findOpenAiModel, type OpenAiModel } from "./model-catalog.js";
 import { writeJson } from "../../shared/http.js";
 
 export type OpenAiModelsRouteResult = {
@@ -14,6 +14,7 @@ export function handleOpenAiModels(params: {
   res: ServerResponse;
   requestId: string;
   receivedAtEpochMs: number;
+  catalog: readonly OpenAiModel[];
   modelId?: string;
 }): OpenAiModelsRouteResult {
   const headers = openAiResponseHeaders({
@@ -21,7 +22,7 @@ export function handleOpenAiModels(params: {
     receivedAtEpochMs: params.receivedAtEpochMs
   });
   if (params.modelId) {
-    const model = findOpenAiModel(params.modelId);
+    const model = findOpenAiModel(params.catalog, params.modelId);
     if (!model) {
       writeJson(params.res, 404, {
         error: {
@@ -50,7 +51,7 @@ export function handleOpenAiModels(params: {
 
   writeJson(params.res, 200, {
     object: "list",
-    data: OPENAI_MODEL_CATALOG
+    data: params.catalog
   }, headers);
   return {
     status: 200,

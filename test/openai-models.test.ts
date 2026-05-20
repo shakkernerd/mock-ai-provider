@@ -141,6 +141,40 @@ describe("OpenAI Models mock", () => {
       errorClass: "invalid_request_error"
     });
   });
+
+  it("can use a caller-supplied model catalog", async () => {
+    const customServer = await createMockAiProviderServer({
+      providers: ["openai"],
+      requestLogPath,
+      openAiModels: [
+        {
+          id: "custom-model",
+          object: "model",
+          created: 1,
+          owned_by: "test"
+        }
+      ]
+    });
+    try {
+      await new Promise<void>((resolve) => {
+        customServer.listen(0, "127.0.0.1", resolve);
+      });
+      const address = customServer.address();
+      if (!address || typeof address !== "object") {
+        throw new Error("server did not bind to a TCP port");
+      }
+
+      const response = await fetch(`http://127.0.0.1:${address.port}/v1/models`);
+      const body = await response.json() as {
+        data: Array<{ id: string }>;
+      };
+      expect(body.data.map((model) => model.id)).toEqual(["custom-model"]);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        customServer.close((error) => error ? reject(error) : resolve());
+      });
+    }
+  });
 });
 
 async function readJournal(path: string): Promise<Array<Record<string, unknown>>> {

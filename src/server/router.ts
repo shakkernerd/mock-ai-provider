@@ -4,6 +4,7 @@ import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiResponses } from "../providers/openai/handle-responses.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
+import type { OpenAiModel } from "../providers/openai/model-catalog.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, requestPath, writeJson, writeNoContent } from "../shared/http.js";
 import { durationMs, nowTimestamp } from "../shared/time.js";
@@ -15,6 +16,7 @@ export type RouterOptions = {
   runtime: ScriptRuntime;
   journal: RequestJournal;
   openAiAuth: OpenAiAuthOptions;
+  openAiModels: readonly OpenAiModel[];
 };
 
 export async function routeRequest(
@@ -161,6 +163,7 @@ export async function routeRequest(
       res,
       requestId,
       receivedAtEpochMs: received.epochMs,
+      catalog: options.openAiModels,
       ...(modelId ? { modelId } : {})
     });
     appendJournal({
