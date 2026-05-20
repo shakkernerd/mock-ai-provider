@@ -143,6 +143,86 @@ describe("OpenAI Responses mock", () => {
     });
   });
 
+  it("stores Responses for retrieve, input items, cancel, and delete routes", async () => {
+    const createResponse = await fetch(`${baseUrl}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-5.5",
+        input: "Keep this response."
+      })
+    });
+    expect(createResponse.status).toBe(200);
+    const created = await createResponse.json() as {
+      id: string;
+      status: string;
+      model: string;
+      output_text: string;
+    };
+
+    const retrieveResponse = await fetch(`${baseUrl}/openai/v1/responses/${created.id}`);
+    expect(retrieveResponse.status).toBe(200);
+    await expect(retrieveResponse.json()).resolves.toMatchObject({
+      id: created.id,
+      status: "completed",
+      output_text: "Hello from Responses."
+    });
+
+    const inputItemsResponse = await fetch(`${baseUrl}/v1/responses/${created.id}/input_items`);
+    expect(inputItemsResponse.status).toBe(200);
+    await expect(inputItemsResponse.json()).resolves.toMatchObject({
+      object: "list",
+      data: [
+        {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "Keep this response."
+            }
+          ]
+        }
+      ],
+      has_more: false
+    });
+
+    const cancelResponse = await fetch(`${baseUrl}/v1/responses/${created.id}/cancel`, { method: "POST" });
+    expect(cancelResponse.status).toBe(200);
+    await expect(cancelResponse.json()).resolves.toMatchObject({
+      id: created.id,
+      status: "cancelled"
+    });
+
+    const deleteResponse = await fetch(`${baseUrl}/v1/responses/${created.id}`, { method: "DELETE" });
+    expect(deleteResponse.status).toBe(200);
+    await expect(deleteResponse.json()).resolves.toEqual({
+      id: created.id,
+      object: "response.deleted",
+      deleted: true
+    });
+
+    const retrieveAfterDelete = await fetch(`${baseUrl}/v1/responses/${created.id}`);
+    expect(retrieveAfterDelete.status).toBe(404);
+
+    const journal = await readJournal(requestLogPath);
+    expect(journal.filter((entry) => typeof entry.path === "string" && entry.path.includes(`/responses/${created.id}`))).toHaveLength(5);
+    expect(journal.find((entry) => entry.path === `/v1/responses/${created.id}/input_items`)).toMatchObject({
+      providerId: "openai",
+      apiSurface: "responses",
+      status: 200,
+      responseType: "stored",
+      responseBody: {
+        object: "list",
+        data: [
+          {
+            role: "user"
+          }
+        ]
+      }
+    });
+  });
+
   it("streams Responses text events", async () => {
     const response = await fetch(`${baseUrl}/v1/responses`, {
       method: "POST",

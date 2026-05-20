@@ -20,6 +20,7 @@ import type { OpenAiModel } from "./models/model-catalog.js";
 import type { OpenAiFineTuningStore } from "./fine-tuning/fine-tuning-store.js";
 import type { OpenAiFileStore } from "./files/file-store.js";
 import type { OpenAiVideoStore } from "./media/video-store.js";
+import type { OpenAiResponseStore } from "./responses/response-store.js";
 import type { OpenAiUploadStore } from "./uploads/upload-store.js";
 import type { OpenAiVectorStoreStore } from "./vector-stores/vector-store.js";
 import type { RequestJournalEntry } from "../../server/request-journal.js";
@@ -36,6 +37,7 @@ export type OpenAiRoutesOptions = {
   videos: OpenAiVideoStore;
   uploads: OpenAiUploadStore;
   vectorStores: OpenAiVectorStoreStore;
+  responses: OpenAiResponseStore;
 };
 
 export type OpenAiRouteMatch = {
@@ -279,13 +281,16 @@ export async function routeOpenAiRequest(params: {
     };
   }
 
-  if (req.method === "POST" && isOpenAiResponsesPath(path, options.providers)) {
+  if (isOpenAiResponsesPath(path, options.providers)) {
     const result = await handleOpenAiResponses({
       req,
       res,
+      path,
+      providers: options.providers,
       runtime: options.runtime,
       requestId,
-      receivedAtEpochMs
+      receivedAtEpochMs,
+      responses: options.responses
     });
     return { handled: true, journal: routeResultJournal("responses", result) };
   }
@@ -451,7 +456,7 @@ function isOpenAiAudioTextPath(path: string, providers: readonly string[]): bool
 }
 
 function isOpenAiResponsesPath(path: string, providers: readonly string[]): boolean {
-  return matchesOpenAiPath({ path, providers, exact: ["responses"] });
+  return matchesOpenAiPath({ path, providers, exact: ["responses"], prefix: ["responses/"] });
 }
 
 function isOpenAiVideosPath(path: string, providers: readonly string[]): boolean {

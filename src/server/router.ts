@@ -6,6 +6,7 @@ import type { OpenAiFileStore } from "../providers/openai/files/file-store.js";
 import type { OpenAiModel } from "../providers/openai/models/model-catalog.js";
 import { routeOpenAiRequest } from "../providers/openai/routes.js";
 import type { OpenAiVideoStore } from "../providers/openai/media/video-store.js";
+import type { OpenAiResponseStore } from "../providers/openai/responses/response-store.js";
 import type { OpenAiUploadStore } from "../providers/openai/uploads/upload-store.js";
 import type { OpenAiVectorStoreStore } from "../providers/openai/vector-stores/vector-store.js";
 import { createRequestId } from "../shared/ids.js";
@@ -28,6 +29,7 @@ export type RouterOptions = {
   openAiVideos: OpenAiVideoStore;
   openAiUploads: OpenAiUploadStore;
   openAiVectorStores: OpenAiVectorStoreStore;
+  openAiResponses: OpenAiResponseStore;
 };
 
 export async function routeRequest(
@@ -139,7 +141,8 @@ export async function routeRequest(
       files: options.openAiFiles,
       videos: options.openAiVideos,
       uploads: options.openAiUploads,
-      vectorStores: options.openAiVectorStores
+      vectorStores: options.openAiVectorStores,
+      responses: options.openAiResponses
     }
   });
   if (openAiMatch.handled) {

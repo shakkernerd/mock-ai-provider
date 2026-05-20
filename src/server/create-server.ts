@@ -14,6 +14,7 @@ import { createOpenAiFileStore, type OpenAiFileStore } from "../providers/openai
 import { createOpenAiVideoStore, type OpenAiVideoStore } from "../providers/openai/media/video-store.js";
 import { createOpenAiUploadStore, type OpenAiUploadStore } from "../providers/openai/uploads/upload-store.js";
 import { createOpenAiVectorStoreStore, type OpenAiVectorStoreStore } from "../providers/openai/vector-stores/vector-store.js";
+import { createOpenAiResponseStore, type OpenAiResponseStore } from "../providers/openai/responses/response-store.js";
 import type { MockScript } from "../scripts/types.js";
 
 export type CreateServerOptions = {
@@ -30,6 +31,7 @@ export type CreateServerOptions = {
   openAiVideos?: OpenAiVideoStore;
   openAiUploads?: OpenAiUploadStore;
   openAiVectorStores?: OpenAiVectorStoreStore;
+  openAiResponses?: OpenAiResponseStore;
 };
 
 export async function createMockAiProviderServer(options: CreateServerOptions): Promise<Server> {
@@ -45,6 +47,7 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
   const openAiVideos = options.openAiVideos ?? createOpenAiVideoStore();
   const openAiUploads = options.openAiUploads ?? createOpenAiUploadStore();
   const openAiVectorStores = options.openAiVectorStores ?? createOpenAiVectorStoreStore();
+  const openAiResponses = options.openAiResponses ?? createOpenAiResponseStore();
 
   return createServer((req, res) => {
     routeRequest(req, res, {
@@ -58,7 +61,8 @@ export async function createMockAiProviderServer(options: CreateServerOptions): 
       openAiFiles,
       openAiVideos,
       openAiUploads,
-      openAiVectorStores
+      openAiVectorStores,
+      openAiResponses
     }).catch((error: unknown) => {
       if (!res.headersSent) {
         res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
