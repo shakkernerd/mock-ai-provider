@@ -107,6 +107,12 @@ async function main() {
   }
 
   if (needUpdateVersion) {
+    await runStep(`Checking npm availability for ${packageName}@${version}`, "npm", [
+      "view",
+      `${packageName}@${version}`,
+      "version",
+      "--json"
+    ], { expectMissingPackage: true });
     await runStep(`Updating version files to ${version}`, "node", ["scripts/update-version.mjs", version]);
   } else {
     log(`skip: version files are already set to ${version}`);
@@ -238,10 +244,10 @@ async function tagHasSignature(tag) {
   return /-----BEGIN (?:PGP|SSH) SIGNATURE-----/.test(result.stdout);
 }
 
-async function runStep(description, command, args) {
+async function runStep(description, command, args, options = {}) {
   const startedAt = Date.now();
   log(description);
-  await run(command, args);
+  await run(command, args, options);
   log(`done: ${description} (${Math.round((Date.now() - startedAt) / 1000)}s)`);
 }
 
@@ -253,7 +259,7 @@ async function run(command, args, options = {}) {
   const result = await new Promise((resolve) => {
     const child = spawn(command, args, {
       cwd: root,
-      stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit"
+      stdio: options.capture || options.expectMissingPackage ? ["ignore", "pipe", "pipe"] : "inherit"
     });
     let stdout = "";
     let stderr = "";
@@ -262,8 +268,14 @@ async function run(command, args, options = {}) {
     child.on("close", (code) => resolve({ code: code ?? 0, stdout, stderr }));
   });
   if (result.code !== 0 && !options.allowFailure) {
+    if (options.expectMissingPackage && /E404|404 Not Found|No match found/.test(`${result.stdout}\n${result.stderr}`)) {
+      return result;
+    }
     const output = result.stderr || result.stdout;
     throw new Error(`${command} ${args.join(" ")} failed with exit code ${result.code}${output ? `\n${output}` : ""}`);
+  }
+  if (options.expectMissingPackage && result.stdout.trim()) {
+    throw new Error(`${args[1]} is already published on npm`);
   }
   return result;
 }
