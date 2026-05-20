@@ -1,53 +1,25 @@
-# curl examples
-
-Start the server:
+# curl
 
 ```sh
 npx mock-ai-provider serve --providers openai
 ```
 
-List models:
-
 ```sh
-curl http://127.0.0.1:31337/v1/models \
-  -H 'Authorization: Bearer local-test-key'
-```
+# Models
+curl http://127.0.0.1:31337/v1/models -H 'Authorization: Bearer local'
 
-Chat Completions:
-
-```sh
+# Chat
 curl http://127.0.0.1:31337/v1/chat/completions \
-  -H 'Authorization: Bearer local-test-key' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "gpt-5.5",
-    "messages": [
-      { "role": "user", "content": "Say hello from curl." }
-    ]
-  }'
-```
+  -H 'Authorization: Bearer local' -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-5.5","messages":[{"role":"user","content":"hi"}]}'
 
-Responses:
-
-```sh
+# Responses
 curl http://127.0.0.1:31337/v1/responses \
-  -H 'Authorization: Bearer local-test-key' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "gpt-5.5",
-    "input": "Say hello from Responses."
-  }'
-```
+  -H 'Authorization: Bearer local' -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-5.5","input":"hi"}'
 
-Embeddings:
-
-```sh
+# Embeddings
 curl http://127.0.0.1:31337/v1/embeddings \
-  -H 'Authorization: Bearer local-test-key' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "text-embedding-3-small",
-    "input": "local embedding text",
-    "dimensions": 8
-  }'
+  -H 'Authorization: Bearer local' -H 'Content-Type: application/json' \
+  -d '{"model":"text-embedding-3-small","input":"hi","dimensions":8}'
 ```

@@ -1,10 +1,31 @@
 # mock-ai-provider
 
-Provider-compatible mock servers for OpenAI, Anthropic, and other AI APIs.
+Provider-compatible mock servers for AI APIs. OpenAI is supported today; more providers are planned.
 
-`mock-ai-provider` is a standalone local HTTP server. Your app should not need
-mock-specific code: point its normal OpenAI base URL at the local server, keep a
-normal API key value, and inspect deterministic requests and responses locally.
+Point your existing SDK at a local URL and ship tests, demos, and offline development without touching a real provider. Your app stays vanilla: no mock-specific code, no SDK shims, just a different base URL.
+
+<p align="center">
+  <img src="media/hero.svg" alt="mock-ai-provider wordmark" width="100%">
+</p>
+
+```sh
+npx mock-ai-provider serve --providers openai
+```
+
+```js
+new OpenAI({ baseURL: "http://127.0.0.1:31337/v1", apiKey: "local" });
+```
+
+That's the whole integration.
+
+## Why
+
+- **Zero app changes.** Your code keeps calling the real provider SDK. Only the base URL moves.
+- **Deterministic.** Same request, same response. Great for CI and snapshot tests.
+- **Scriptable.** Final text, tool calls, errors, delays, malformed bodies, timeouts — all from a small JSON file.
+- **Full request journal.** Every call lands in `.mock-ai-provider/requests.jsonl`, secrets redacted, ready to `tail -f` or assert against.
+- **Broad surface.** For OpenAI today: Chat, Responses, Completions, Embeddings, Images, Audio, Video, Files, Uploads, Batches, Vector Stores, Moderations, Fine-tuning, Models — including SSE streaming and tool calls.
+- **No runtime dependencies.** One Node process. Fast to start, easy to embed in tests.
 
 ## Install
 
@@ -12,86 +33,34 @@ normal API key value, and inspect deterministic requests and responses locally.
 npm install -D mock-ai-provider
 ```
 
-## Start
+Or install globally when you want the command available everywhere:
+
+```sh
+npm install -g mock-ai-provider
+```
+
+## Run
 
 ```sh
 npx mock-ai-provider serve --providers openai
 ```
 
-Default server:
-
-```text
-http://127.0.0.1:31337
-```
-
-Default OpenAI-compatible base URL for SDKs:
-
-```text
-http://127.0.0.1:31337/v1
-```
-
-Default request journal:
-
-```text
-.mock-ai-provider/requests.jsonl
-```
-
-## Base URLs
-
-Single-provider OpenAI mode exposes native OpenAI paths:
-
-```text
-http://127.0.0.1:31337/v1
-```
-
-Provider-prefixed OpenAI mode is also available:
-
-```text
-http://127.0.0.1:31337/openai/v1
-```
-
-Use the native `/v1` base URL for most OpenAI SDKs.
-
-## OpenAI Surface
-
-The minimum v1 OpenAI-compatible surface includes:
-
-- Models
-- Chat Completions, including streaming and tool calls
-- Responses, including streaming, tool calls, stored retrieval, input items, cancel, and delete
-- Completions
-- Embeddings
-- Images
-- Audio speech, transcriptions, and translations
-- Videos
-- Files
-- Uploads
-- Batches
-- Vector stores, vector store files, and vector store file batches
-- Moderations
-- Fine-tuning job lifecycle routes
-
-The server returns OpenAI-shaped JSON bodies, OpenAI-style error bodies, SSE
-streaming responses, request ids, OpenAI metadata headers, permissive local auth
-by default, and optional strict bearer-token auth.
-
-## Request Journal
-
-Every provider request is appended as one JSONL row. The journal includes the
-full parsed request body for JSON requests, useful request and response headers,
-status, provider, API surface, model, script step, response body or response
-summary, emitted tool calls, and emitted final text.
-
-Secret-shaped fields such as API keys, bearer tokens, OAuth tokens, passwords,
-client secrets, and private keys are redacted before the entry is stored or
-returned from admin routes. The normal `Authorization` header is logged only as
-`present`.
-
-Binary upload bodies are summarized with filename, content type, and byte
-length instead of storing raw binary in the journal.
+With a global install:
 
 ```sh
-tail -f .mock-ai-provider/requests.jsonl
+mock-ai-provider serve --providers openai
+```
+
+| Default     | Value                                  |
+| ----------- | -------------------------------------- |
+| Base URL    | `http://127.0.0.1:31337/v1`            |
+| Request log | `.mock-ai-provider/requests.jsonl`     |
+| Auth        | Permissive (any bearer token accepted) |
+
+Use `--port 0` to bind a random free port. Startup writes one JSON line to stdout so scripts can discover the actual URL:
+
+```json
+{"ok":true,"baseUrl":"http://127.0.0.1:31337","port":31337,"requestLog":".mock-ai-provider/requests.jsonl"}
 ```
 
 ## CLI
@@ -99,89 +68,78 @@ tail -f .mock-ai-provider/requests.jsonl
 ```sh
 mock-ai-provider serve \
   --providers openai \
+  --script ./mock-script.json \
   --port 31337 \
-  --request-log .mock-ai-provider/requests.jsonl
+  --request-log .mock-ai-provider/requests.jsonl \
+  --strict-auth --api-key sk-test
 ```
 
-On startup, stdout prints one JSON object. Scripts can parse this to discover the
-actual bound port when using `--port 0`:
+- `--providers openai` — enabled providers.
+- `--script <path>` — scripted responses (see below).
+- `--models <path>` — custom model catalog.
+- `--port <number|0>` — `0` picks a free port.
+- `--request-log <path>` — JSONL journal output.
+- `--strict-auth` + `--api-key <key>` — require a specific bearer token.
+
+## Scripted Responses
+
+Drive any request shape from a small JSON file. Steps run in order, or match by API surface, model, body path, or tool-call state.
 
 ```json
 {
-  "ok": true,
-  "host": "127.0.0.1",
-  "port": 31337,
-  "baseUrl": "http://127.0.0.1:31337",
-  "requestLog": ".mock-ai-provider/requests.jsonl"
-}
-```
-
-Options:
-
-- `--providers openai`: enabled provider protocols.
-- `--script <path>`: scripted response file.
-- `--models <path>`: model catalog override.
-- `--port <number|0>`: server port. `0` asks the OS for a free port.
-- `--request-log <path>`: JSONL request journal path.
-- `--strict-auth`: require bearer auth.
-- `--api-key <key>`: accepted bearer token when strict auth is enabled.
-- `--version`: print the package version.
-
-## Script Example
-
-```json
-{
-  "id": "local-agent-flow",
+  "id": "agent-flow",
   "steps": [
     {
-      "id": "tool-call",
       "match": { "apiSurface": "chat.completions" },
       "respond": {
         "type": "tool-calls",
-        "toolCalls": [
-          {
-            "name": "lookup_order",
-            "arguments": "{\"order_id\":\"123\"}"
-          }
-        ]
+        "toolCalls": [{ "name": "lookup_order", "arguments": "{\"id\":\"123\"}" }]
       }
     },
     {
-      "id": "final-after-tool",
-      "match": {
-        "apiSurface": "chat.completions",
-        "hasToolResult": true
-      },
-      "respond": {
-        "type": "final-text",
-        "text": "The order is ready."
-      }
+      "match": { "apiSurface": "chat.completions", "hasToolResult": true },
+      "respond": { "type": "final-text", "text": "Your order is ready." }
     }
   ]
 }
 ```
 
-Start with the script:
+Response types: `final-text`, `tool-calls`, `error`, `malformed`, `timeout`, `delay`. Reload at runtime by `POST`ing to `/admin/script`.
+
+## Request Journal
+
+Every request is appended as one JSONL line: parsed body, headers, status, matched script step, emitted tool calls, and final text. API keys, bearer tokens, OAuth tokens, passwords, and private keys are redacted automatically. Binary uploads are summarized, not stored.
 
 ```sh
-npx mock-ai-provider serve --providers openai --script ./mock-script.json
+tail -f .mock-ai-provider/requests.jsonl
+```
+
+Inspect or reset programmatically:
+
+```text
+GET  /admin/requests      # latest entries (?limit=N)
+POST /admin/reset         # clear journal
+POST /admin/script        # hot-swap script
+GET  /health  /status
 ```
 
 ## Examples
 
-Examples live in `examples/`:
-
-- `examples/curl.md`
-- `examples/openai-node.md`
-- `examples/openai-python.md`
-- `examples/openclaw-provider-config.md`
+- [examples/openai-node.md](examples/openai-node.md)
+- [examples/openai-python.md](examples/openai-python.md)
+- [examples/curl.md](examples/curl.md)
+- [examples/openclaw-provider-config.md](examples/openclaw-provider-config.md)
 
 ## Development
 
 ```sh
 pnpm install
-pnpm run check
-pnpm run serve
+pnpm run check    # build + tests
+pnpm run serve    # build + start
 ```
 
-The package has no runtime dependencies.
+Requires Node ≥ 22.19. No runtime dependencies.
+
+## License
+
+MIT

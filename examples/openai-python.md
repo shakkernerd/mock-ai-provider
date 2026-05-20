@@ -1,58 +1,32 @@
-# OpenAI Python SDK example
-
-Use the normal OpenAI Python SDK and replace only the base URL.
-
-Start the server:
+# OpenAI Python SDK
 
 ```sh
 npx mock-ai-provider serve --providers openai
 ```
 
-Install the SDK in your app:
-
-```sh
-pip install openai
-```
-
-Example:
-
 ```py
 from openai import OpenAI
 
-client = OpenAI(
-    api_key="local-test-key",
-    base_url="http://127.0.0.1:31337/v1",
-)
+client = OpenAI(base_url="http://127.0.0.1:31337/v1", api_key="local")
 
+# Chat
 chat = client.chat.completions.create(
     model="gpt-5.5",
-    messages=[{"role": "user", "content": "Say hello from the OpenAI Python SDK."}],
+    messages=[{"role": "user", "content": "hi"}],
 )
-
 print(chat.choices[0].message.content)
-```
 
-Streaming:
-
-```py
+# Streaming
 stream = client.chat.completions.create(
     model="gpt-5.5",
-    messages=[{"role": "user", "content": "Stream hello."}],
+    messages=[{"role": "user", "content": "hi"}],
     stream=True,
 )
-
 for chunk in stream:
     print(chunk.choices[0].delta.content or "", end="")
 print()
-```
 
-Responses:
-
-```py
-response = client.responses.create(
-    model="gpt-5.5",
-    input="Say hello from Responses.",
-)
-
-print(response.output_text)
+# Responses API
+r = client.responses.create(model="gpt-5.5", input="hi")
+print(r.output_text)
 ```
