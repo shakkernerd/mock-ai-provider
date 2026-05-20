@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { handleOpenAiModels } from "../providers/openai/handle-models.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, requestPath, writeJson } from "../shared/http.js";
@@ -80,6 +81,29 @@ export async function routeRequest(
     return;
   }
 
+  if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
+    const modelId = readOpenAiModelId(path);
+    const result = handleOpenAiModels({
+      res,
+      requestId,
+      ...(modelId ? { modelId } : {})
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: "models",
+      model: result.model,
+      stream: null,
+      status: result.status,
+      matchedScriptStep: null,
+      responseType: "model",
+      toolCallsEmitted: 0,
+      finalTextEmitted: null,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes
+    });
+    return;
+  }
+
   writeJson(res, 404, {
     error: {
       message: `route not found: ${req.method ?? "GET"} ${path}`,
@@ -94,6 +118,25 @@ function isOpenAiChatCompletionsPath(path: string, providers: readonly string[])
     return providers.includes("openai");
   }
   return path === "/v1/chat/completions" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiModelsPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/models" || path.startsWith("/openai/v1/models/")) {
+    return providers.includes("openai");
+  }
+  if (path === "/v1/models" || path.startsWith("/v1/models/")) {
+    return providers.length === 1 && providers[0] === "openai";
+  }
+  return false;
+}
+
+function readOpenAiModelId(path: string): string | undefined {
+  const prefix = path.startsWith("/openai/") ? "/openai/v1/models/" : "/v1/models/";
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+  const modelId = path.slice(prefix.length);
+  return modelId.length > 0 ? decodeURIComponent(modelId) : undefined;
 }
 
 function emptyJournalFields(params: { status: number; errorClass?: string | null }) {
