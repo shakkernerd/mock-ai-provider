@@ -2,13 +2,46 @@
   "name": "mock-ai-provider",
   "version": "0.1.0",
   "description": "Provider-compatible mock servers for OpenAI, Anthropic, and other AI APIs.",
+  "keywords": [
+    "openai",
+    "openai-compatible",
+    "mock-openai",
+    "mock-ai",
+    "mock-provider",
+    "ai-provider",
+    "ai-provider-mock",
+    "provider-mock",
+    "anthropic-mock",
+    "google-ai-mock",
+    "openrouter-mock",
+    "llm",
+    "testing",
+    "ci",
+    "local-development",
+    "responses-api",
+    "chat-completions",
+    "embeddings",
+    "anthropic",
+    "google-ai",
+    "openrouter"
+  ],
   "license": "MIT",
+  "author": "Shakker",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shakkernerd/mock-ai-provider.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shakkernerd/mock-ai-provider/issues"
+  },
+  "homepage": "https://github.com/shakkernerd/mock-ai-provider#readme",
   "type": "module",
   "bin": {
     "mock-ai-provider": "./dist/cli.js"
   },
   "files": [
     "dist",
+    "examples",
     "media",
     "LICENSE",
     "README.md"
@@ -20,7 +53,10 @@
     "build": "rm -rf dist && tsc -p tsconfig.json",
     "serve": "pnpm run build && node dist/cli.js serve --providers openai",
     "test": "vitest run",
-    "check": "pnpm run build && pnpm run test"
+    "check": "pnpm run build && pnpm run test",
+    "release:check": "node scripts/release.mjs",
+    "release:dry-run": "node scripts/release.mjs --dry-run",
+    "release:publish": "node scripts/release.mjs --publish"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

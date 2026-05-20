@@ -39,7 +39,7 @@
       <rect x="264" y="-18" width="34" height="26" rx="13" fill="none" stroke="#3a3a3a" stroke-dasharray="4 4"/>
       <text x="281" y="0" text-anchor="middle">…</text>
     </g>
-    <text x="0" y="60" fill="#5a5a5a">$ npx mock-ai-provider serve --providers openai</text>
+    <text x="0" y="60" fill="#5a5a5a">$ mock-ai-provider serve --providers openai</text>
   </g>
 
   <!-- corner glyph: a stylized brackets/server mark -->

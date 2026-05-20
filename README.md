@@ -1,12 +1,14 @@
 # mock-ai-provider
 
-Provider-compatible mock servers for AI APIs. OpenAI is supported today; more providers are planned.
-
-Point your existing SDK at a local URL and ship tests, demos, and offline development without touching a real provider. Your app stays vanilla: no mock-specific code, no SDK shims, just a different base URL.
+Provider-compatible mock servers for OpenAI, Anthropic, and other AI APIs.
 
 <p align="center">
   <img src="media/hero.svg" alt="mock-ai-provider wordmark" width="100%">
 </p>
+
+OpenAI is supported today. The model is multi-provider: one local server, provider-native routes, provider-specific scripts, and one request journal as more providers land.
+
+Point your existing SDK at a local URL and ship tests, demos, and offline development without touching a real provider. Your app stays vanilla: no mock-specific code, no SDK shims, just a different base URL.
 
 ```sh
 npx mock-ai-provider serve --providers openai
@@ -16,7 +18,9 @@ npx mock-ai-provider serve --providers openai
 new OpenAI({ baseURL: "http://127.0.0.1:31337/v1", apiKey: "local" });
 ```
 
-That's the whole integration.
+That's the whole integration for the first provider.
+
+Provider status: OpenAI supported today; Anthropic, Google, OpenRouter, and others are planned.
 
 ## Why
 
@@ -24,7 +28,8 @@ That's the whole integration.
 - **Deterministic.** Same request, same response. Great for CI and snapshot tests.
 - **Scriptable.** Final text, tool calls, errors, delays, malformed bodies, timeouts — all from a small JSON file.
 - **Full request journal.** Every call lands in `.mock-ai-provider/requests.jsonl`, secrets redacted, ready to `tail -f` or assert against.
-- **Broad surface.** For OpenAI today: Chat, Responses, Completions, Embeddings, Images, Audio, Video, Files, Uploads, Batches, Vector Stores, Moderations, Fine-tuning, Models — including SSE streaming and tool calls.
+- **Provider-native by design.** OpenAI uses OpenAI-compatible routes today; Anthropic, Google, OpenRouter, and others will keep their own protocol shapes instead of being forced through one fake API.
+- **Broad OpenAI surface today.** Chat, Responses, Completions, Embeddings, Images, Audio, Video, Files, Uploads, Batches, Vector Stores, Moderations, Fine-tuning, Models — including SSE streaming and tool calls.
 - **No runtime dependencies.** One Node process. Fast to start, easy to embed in tests.
 
 ## Install
