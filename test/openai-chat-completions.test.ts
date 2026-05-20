@@ -124,6 +124,54 @@ describe("OpenAI Chat Completions mock", () => {
     expect(body.choices[0]?.message.content).toBe("Hello from the mock provider.");
   });
 
+  it("streams OpenAI chat completion chunks", async () => {
+    const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-mock",
+        stream: true,
+        stream_options: { include_usage: true },
+        messages: [{ role: "user", content: "Hello" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(response.headers.get("openai-version")).toBe("2020-10-01");
+    const streamText = await response.text();
+    expect(streamText).toContain("data: [DONE]");
+    const events = readSseEvents(streamText);
+    expect(events[0]).toMatchObject({
+      object: "chat.completion.chunk",
+      choices: [{ delta: { role: "assistant" } }]
+    });
+    const content = events
+      .flatMap((event) => event.choices as Array<{ delta?: { content?: string } }>)
+      .map((choice) => choice.delta?.content ?? "")
+      .join("");
+    expect(content).toBe("Hello from the mock provider.");
+    expect(events.at(-1)).toMatchObject({
+      object: "chat.completion.chunk",
+      choices: [],
+      usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0
+      }
+    });
+
+    const journal = await readJournal(requestLogPath);
+    expect(journal.find((entry) => entry.path === "/v1/chat/completions" && entry.stream === true)).toMatchObject({
+      providerId: "openai",
+      apiSurface: "chat.completions",
+      model: "gpt-mock",
+      status: 200,
+      responseType: "final-text",
+      finalTextEmitted: "Hello from the mock provider."
+    });
+  });
+
   it("uses the built-in script when no script path is provided", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mock-ai-provider-default-script-"));
     const defaultServer = await createMockAiProviderServer({
@@ -164,4 +212,11 @@ describe("OpenAI Chat Completions mock", () => {
 async function readJournal(path: string): Promise<Array<Record<string, unknown>>> {
   const text = await readFile(path, "utf8");
   return text.trim().split("\n").map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+function readSseEvents(text: string): Array<Record<string, unknown>> {
+  return text
+    .split("\n\n")
+    .filter((event) => event.startsWith("data: ") && event !== "data: [DONE]")
+    .map((event) => JSON.parse(event.slice("data: ".length)) as Record<string, unknown>);
 }

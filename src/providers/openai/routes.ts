@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { openAiResponseHeaders } from "./headers.js";
+import { writeChatCompletionStream } from "./render-chat-completion-stream.js";
 import { renderChatCompletion } from "./render-chat-completions.js";
 import { readRequestBody, writeJson } from "../../shared/http.js";
 import { parseJsonObject } from "../../shared/json.js";
@@ -30,11 +31,32 @@ export async function handleOpenAiChatCompletions(params: {
     bodyText = await readRequestBody(params.req);
     const requestBody = parseJsonObject(bodyText);
     const step = params.runtime.nextStep();
-    const rendered = renderChatCompletion(requestBody, step);
-    writeJson(params.res, 200, rendered.body, openAiResponseHeaders({
+    const headers = openAiResponseHeaders({
       requestId: params.requestId,
       receivedAtEpochMs: params.receivedAtEpochMs
-    }));
+    });
+    if (requestBody.stream === true) {
+      const rendered = writeChatCompletionStream({
+        res: params.res,
+        requestBody,
+        step,
+        headers
+      });
+      return {
+        status: 200,
+        model: rendered.model,
+        stream: rendered.stream,
+        matchedScriptStep: step.id ?? null,
+        responseType: rendered.responseType,
+        finalText: rendered.finalText,
+        bodyBytes: Buffer.byteLength(bodyText),
+        requestBody,
+        errorClass: null
+      };
+    }
+
+    const rendered = renderChatCompletion(requestBody, step);
+    writeJson(params.res, 200, rendered.body, headers);
     return {
       status: 200,
       model: rendered.model,

@@ -13,12 +13,6 @@ export type OpenAiChatRenderResult = {
 export function renderChatCompletion(requestBody: JsonRecord, step: ScriptStep): OpenAiChatRenderResult {
   const model = readString(requestBody, "model") ?? "mock-model";
   const stream = requestBody.stream === true;
-  if (stream) {
-    throw Object.assign(new Error("streaming chat completions are not implemented in the first milestone"), {
-      statusCode: 400,
-      errorType: "unsupported_stream"
-    });
-  }
   const text = step.respond.text;
   return {
     model,
