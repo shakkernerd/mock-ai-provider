@@ -11,3 +11,15 @@ export function createChatCompletionId(): string {
 export function createToolCallId(): string {
   return `call_${randomUUID().replaceAll("-", "")}`;
 }
+
+export function createResponseId(): string {
+  return `resp_${randomUUID().replaceAll("-", "")}`;
+}
+
+export function createResponseItemId(): string {
+  return `msg_${randomUUID().replaceAll("-", "")}`;
+}
+
+export function createEventId(): string {
+  return `event_${randomUUID().replaceAll("-", "")}`;
+}

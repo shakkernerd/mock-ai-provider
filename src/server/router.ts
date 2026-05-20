@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { enforceOpenAiAuth, type OpenAiAuthOptions } from "../providers/openai/auth.js";
 import { handleOpenAiEmbeddings } from "../providers/openai/handle-embeddings.js";
 import { handleOpenAiModels } from "../providers/openai/handle-models.js";
+import { handleOpenAiResponses } from "../providers/openai/handle-responses.js";
 import { handleOpenAiChatCompletions } from "../providers/openai/routes.js";
 import { createRequestId } from "../shared/ids.js";
 import { firstHeader, requestPath, writeJson, writeNoContent } from "../shared/http.js";
@@ -122,6 +123,35 @@ export async function routeRequest(
     return;
   }
 
+  if (req.method === "POST" && isOpenAiResponsesPath(path, options.providers)) {
+    if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
+      return;
+    }
+    const result = await handleOpenAiResponses({
+      req,
+      res,
+      runtime: options.runtime,
+      requestId,
+      receivedAtEpochMs: received.epochMs
+    });
+    appendJournal({
+      providerId: "openai",
+      apiSurface: "responses",
+      model: result.model,
+      stream: result.stream,
+      status: result.status,
+      matchedScriptStep: result.matchedScriptStep,
+      responseType: result.responseType,
+      toolCallsEmitted: result.toolCallsEmitted,
+      finalTextEmitted: result.finalText,
+      errorClass: result.errorClass,
+      bodyBytes: result.bodyBytes,
+      ...(result.requestBody ? { requestBody: result.requestBody } : {}),
+      ...(result.requestBodyRaw ? { requestBodyRaw: result.requestBodyRaw } : {})
+    });
+    return;
+  }
+
   if (req.method === "GET" && isOpenAiModelsPath(path, options.providers)) {
     if (!authorizeOpenAiRequest({ req, res, requestId, receivedAtEpochMs: received.epochMs, options, appendJournal })) {
       return;
@@ -180,6 +210,13 @@ function isOpenAiEmbeddingsPath(path: string, providers: readonly string[]): boo
     return providers.includes("openai");
   }
   return path === "/v1/embeddings" && providers.length === 1 && providers[0] === "openai";
+}
+
+function isOpenAiResponsesPath(path: string, providers: readonly string[]): boolean {
+  if (path === "/openai/v1/responses") {
+    return providers.includes("openai");
+  }
+  return path === "/v1/responses" && providers.length === 1 && providers[0] === "openai";
 }
 
 function readOpenAiModelId(path: string): string | undefined {
